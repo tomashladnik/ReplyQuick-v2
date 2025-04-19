@@ -1,82 +1,65 @@
 import { PrismaClient } from "@prisma/client";
-import { Twilio } from "twilio";
 import { NextResponse } from "next/server";
+import { Twilio } from "twilio";
 
 const prisma = new PrismaClient();
+const twilioClient = new Twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 export async function POST(req) {
   try {
-    const formData = await req.formData();
-    const messageSid = formData.get("MessageSid");
-    const from = formData.get("From");
-    const body = formData.get("Body");
-    const status = formData.get("MessageStatus");
+    // Parse incoming data (Twilio sends x-www-form-urlencoded)
+    const data = await req.text();
+    const params = new URLSearchParams(data);
+    const from = params.get('From');
+    const body = params.get('Body');
+    const messageSid = params.get('MessageSid');
+    const status = params.get('MessageStatus');
 
-    console.log("Received SMS webhook:", { messageSid, from, body, status });
+    console.log("Received SMS:", { from, body });
 
-    // Find contact by phone number
-    const contact = await prisma.contact.findFirst({
-      where: {
-        phone: from,
-      },
-    });
-
-    if (!contact) {
-      console.log("Contact not found for phone number:", from);
-    } else {
-      // Create or get thread
-      let thread = await prisma.thread.findFirst({
-        where: {
-          contactId: contact.id,
-        },
-      });
-
-      if (!thread) {
-        thread = await prisma.thread.create({
+    // Database operations (with error handling)
+    let contact;
+    try {
+      contact = await prisma.contact.findFirst({ where: { phone: from } });
+      if (contact) {
+        let thread = await prisma.thread.findFirst({ where: { contactId: contact.id } });
+        if (!thread) {
+          thread = await prisma.thread.create({
+            data: { contactId: contact.id, userId: contact.userId || "system", label: "General" },
+          });
+        }
+        await prisma.message.create({
           data: {
-            contactId: contact.id,
-            userId: contact.userId || "system",
-            label: "General",
+            threadId: thread.id,
+            content: body,
+            channel: "sms",
+            direction: "inbound",
+            status: status,
+            metadata: { messageId: messageSid, twilioStatus: status },
           },
         });
       }
-
-      // Store incoming message
-      await prisma.message.create({
-        data: {
-          threadId: thread.id,
-          content: body,
-          channel: "sms",
-          direction: "inbound",
-          status: status,
-          metadata: {
-            messageId: messageSid,
-            twilioStatus: status,
-          },
-        },
-      });
+    } catch (prismaError) {
+      console.error("Database error:", prismaError);
     }
 
-    // Return TwiML response
-    const twiml = new Twilio.twiml.MessagingResponse();
-    // Optionally, you can add a reply message:
-    // twiml.message("Thanks for your message! We'll get back to you soon.");
-    const response = new NextResponse(twiml.toString(), {
+    // TwiML response
+    const twiml = new twilioClient.twiml.MessagingResponse();
+    twiml.message("Thanks for your message!"); // Auto-reply to test
+    return new NextResponse(twiml.toString(), {
       status: 200,
       headers: { "Content-Type": "text/xml" },
     });
 
-    return response;
   } catch (error) {
-    console.error("Error processing SMS webhook:", error);
-
-    // Return TwiML even in case of error to avoid Twilio retrying
-    const twiml = new Twilio.twiml.MessagingResponse();
-    const response = new NextResponse(twiml.toString(), {
+    console.error("Webhook error:", error);
+    const twiml = new twilioClient.twiml.MessagingResponse();
+    return new NextResponse(twiml.toString(), {
       status: 500,
       headers: { "Content-Type": "text/xml" },
     });
-
-    return response;
   }
 }
