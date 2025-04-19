@@ -21,6 +21,7 @@ model User {
   
   contacts Contact[]
   calls Call[]
+  threads Thread[]
 
   @@map("users")
 }
@@ -53,8 +54,6 @@ model Call {
   @@map("calls")
 }
 
-
-
 model Contact {
   id        String   @id @default(uuid())
   userId    String?  // Optional now
@@ -67,9 +66,44 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user  User?   @relation(fields: [userId], references: [id])
-  calls Call[]
+  user    User?    @relation(fields: [userId], references: [id])
+  calls   Call[]
+  threads Thread[]
 
   @@index([userId])
   @@map("contacts")
+}
+
+model Thread {
+  id        String    @id @default(uuid())
+  contactId String
+  userId    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  label     String?   // For auto-labeling (e.g., "Support", "Follow-up")
+  
+  contact   Contact   @relation(fields: [contactId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  messages  Message[]
+
+  @@index([contactId])
+  @@index([userId])
+  @@map("threads")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  threadId  String
+  content   String
+  channel   String   // "email", "sms", "whatsapp"
+  direction String   // "inbound" or "outbound"
+  status    String   // "sent", "delivered", "failed"
+  metadata  Json?    // For storing channel-specific data
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  thread    Thread   @relation(fields: [threadId], references: [id])
+
+  @@index([threadId])
+  @@map("messages")
 }

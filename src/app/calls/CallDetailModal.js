@@ -1,10 +1,10 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Phone, Clock, Calendar, User, FileText } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.jsx"
+import { Calendar, Clock, FileText, Phone, User } from "lucide-react"
 
 export default function CallDetailModal({ call, onClose }) {
   if (!call) return null
@@ -150,4 +150,3 @@ export default function CallDetailModal({ call, onClose }) {
     </Dialog>
   )
 }
-

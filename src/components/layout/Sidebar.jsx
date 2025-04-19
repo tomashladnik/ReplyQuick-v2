@@ -13,8 +13,8 @@ export function Sidebar() {
     { name: "AI Calls", href: "/calls", icon: Phone },
     { name: "Contacts", href: "/contacts", icon: Users },
     { name: "Analytics", href: "/analytics", icon: BarChart2 },
-    { name: "Messages", href: "/messages", icon: MessageSquare },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Messages", href: "/msg", icon: MessageSquare },
+    { name: "Settings", href: "/setting", icon: Settings },
   ]
 
   return (
