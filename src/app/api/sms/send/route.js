@@ -45,10 +45,28 @@ export async function POST(req) {
     });
 
     if (!thread) {
+      // Get the user associated with this contact
+      const user = await prisma.user.findFirst({
+        where: {
+          contacts: {
+            some: {
+              id: contact.id
+            }
+          }
+        }
+      });
+
+      if (!user) {
+        return NextResponse.json(
+          { error: "No user found associated with this contact" },
+          { status: 404 }
+        );
+      }
+
       thread = await prisma.thread.create({
         data: {
           contactId: contact.id,
-          userId: null,
+          userId: user.id,
           label: "General",
         },
       });

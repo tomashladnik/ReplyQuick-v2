@@ -35,7 +35,7 @@ export async function POST(req) {
 
     // TwiML response - THIS IS THE CRITICAL FIX
     const twiml = new twilio.twiml.MessagingResponse();
-    twiml.message("Thanks for your message!");
+    twiml.message("aagaya ha");
     return new NextResponse(twiml.toString(), {
       status: 200,
       headers: { "Content-Type": "text/xml" },

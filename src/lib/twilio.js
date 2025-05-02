@@ -108,14 +108,15 @@ export const getWhatsAppHistory = async (phoneNumber) => {
 export const sendSMS = async (toNumber, message) => {
   try {
     console.log('Attempting to send SMS to:', toNumber);
+    console.log('from number:', process.env.TWILIO_PHONE_NUMBER);
     
     const smsMessage = await client.messages.create({
       body: message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: toNumber
     });
-
     console.log('SMS sent successfully:', smsMessage.sid);
+    console.log('from number:', process.env.TWILIO_PHONE_NUMBER);
     return { 
       success: true, 
       messageId: smsMessage.sid,
