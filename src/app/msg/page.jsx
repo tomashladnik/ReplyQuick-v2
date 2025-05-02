@@ -9,32 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mail, MessageSquare, Phone, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
-
-
-// const contacts = [
-//   {
-//     id: 1,
-//     name: "John Doe",
-//     lastMessage: "Hey, how are you?",
-//     time: "2:30 PM",
-//     avatar: "https://github.com/shadcn.png",
-//   },
-//   {
-//     id: 2,
-//     name: "Jane Smith",
-//     lastMessage: "Can we meet tomorrow?",
-//     time: "1:45 PM",
-//     avatar: "https://github.com/shadcn.png",
-//   },
-//   {
-//     id: 3,
-//     name: "Mike Johnson",
-//     lastMessage: "The project is ready!",
-//     time: "12:15 PM",
-//     avatar: "https://github.com/shadcn.png",
-//   },
-// ];
-
 export default function ChatPage() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [message, setMessage] = useState("");
@@ -46,8 +20,8 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedContact) return;
     try {
-      // Choose API endpoint based on communication type
-      console.log("communicationType",communicationType);
+      setMessage(""); // Clear message immediately for better UX
+      
       const endpoint = communicationType === "whatsapp" 
         ? "/api/whatsapp/send" 
         : "/api/sms/send";
@@ -69,8 +43,23 @@ export default function ChatPage() {
         throw new Error(data.error || "Failed to send message");
       }
 
-      // Clear the message input after successful send
-      setMessage("");
+      // Trigger immediate message refresh
+      const fetchMessages = async () => {
+        const msgHistory = communicationType === "whatsapp" 
+          ? "/api/whatsapp/messages?contactId=" + selectedContact.id 
+          : "/api/sms/messages?contactId=" + selectedContact.id;
+        
+        const msgHistoryResponse = await fetch(msgHistory);
+        const msgHistoryData = await msgHistoryResponse.json();
+        
+        if (communicationType === "whatsapp") {
+          setWhatsappMessages(msgHistoryData);
+        } else {
+          setSmsMessages(msgHistoryData.messages || []);
+        }
+      };
+      
+      await fetchMessages();
       
     } catch (error) {
       console.error("Error sending message:", error);
@@ -96,25 +85,61 @@ export default function ChatPage() {
    }, []);
    useEffect(() => {
     const fetchMessages = async () => {
-      const msgHistory = communicationType === "whatsapp" ? "/api/whatsapp/messages?contactId=" + selectedContact.id : "/api/sms/messages?contactId=" + selectedContact.id;
-      const msgHistoryResponse = await fetch(msgHistory, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },  
-      });
-      const msgHistoryData = await msgHistoryResponse.json();
-      console.log("msgHistoryData",msgHistoryData);
-      if (communicationType === "whatsapp") {
-        setWhatsappMessages(msgHistoryData);
-      } else {
-        setSmsMessages(msgHistoryData.messages);
+      if (!selectedContact) return;
+      
+      try {
+        const msgHistory = communicationType === "whatsapp" 
+          ? "/api/whatsapp/messages?contactId=" + selectedContact.id 
+          : "/api/sms/messages?contactId=" + selectedContact.id;
+        
+        const msgHistoryResponse = await fetch(msgHistory);
+        const msgHistoryData = await msgHistoryResponse.json();
+        
+        if (communicationType === "whatsapp") {
+          setWhatsappMessages(msgHistoryData);
+        } else {
+          setSmsMessages(msgHistoryData.messages || []);
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
       }
     };
+
+    // Initial fetch
     fetchMessages();
-   }, [communicationType]);
-   const showSmsMessages = smsMessages.filter((msg)=>!msg?.body?.includes("This code will expire in 10 minutes") && msg?.status === "delivered");
-   console.log("showSmsMessages",showSmsMessages);
+
+    // Set up interval to refresh messages every 5 seconds
+    const interval = setInterval(fetchMessages, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+   }, [communicationType, selectedContact]);
+
+   // Filter out OTP messages and only show delivered/sent messages
+   const showSmsMessages = smsMessages
+     .filter((msg) => {
+       // Debug logs
+       
+       return !msg?.body?.includes("This code will expire in 10 minutes") && 
+              (msg?.status === "delivered" || msg?.status === "sent");
+     })
+     .sort((a, b) => new Date(a.dateCreated) - new Date(b.dateCreated));
+
+   console.log("showSmsMessages", showSmsMessages);
+
+   // Function to scroll to bottom of messages
+   const scrollToBottom = () => {
+     const messagesContainer = document.querySelector('.messages-container');
+     if (messagesContainer) {
+       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+     }
+   };
+
+   // Scroll to bottom when messages change
+   useEffect(() => {
+     scrollToBottom();
+   }, [showSmsMessages]);
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
@@ -251,13 +276,43 @@ export default function ChatPage() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 px-4 py-2">
+                <ScrollArea className="flex-1 px-4 py-2 messages-container" style={{ minHeight: 0, maxHeight: '60vh' }}>
                   <div className="space-y-4">
-                    <p className="text-muted-foreground text-sm italic">
-                      {communicationType === "whatsapp" ? "WhatsApp messages will appear here." :
-                       communicationType === "email" ? "Email conversation will appear here." :
-                       "SMS messages will appear here."}
-                    </p>
+                    {communicationType === "sms" ? (
+                      showSmsMessages.length > 0 ? (
+                        showSmsMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex w-full ${msg.direction === "outbound-api" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
+                                ${msg.direction === "outbound-api"
+                                  ? "bg-primary text-primary-foreground rounded-br-none ml-8"
+                                  : "bg-muted rounded-bl-none mr-8"
+                                }`}
+                            >
+                              <p className="text-sm break-words">{msg.body}</p>
+                              <p className="text-xs text-muted-foreground mt-1 text-right">
+                                {new Date(msg.dateCreated).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-sm italic text-center">
+                          No messages yet. Start the conversation!
+                        </p>
+                      )
+                    ) : communicationType === "whatsapp" ? (
+                      <p className="text-muted-foreground text-sm italic">
+                        WhatsApp messages will appear here.
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-sm italic">
+                        Email conversation will appear here.
+                      </p>
+                    )}
                   </div>
                 </ScrollArea>
 
