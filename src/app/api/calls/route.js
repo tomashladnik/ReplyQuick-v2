@@ -38,7 +38,7 @@ const initiateCall = async (contact, callMetadataBase) => {
     const retellResponse = await axios.post(
       "https://api.retellai.com/v2/create-phone-call",
       {
-        from_number: process.env.TWILIO_PHONE_NUMBER,
+        from_number: process.env.TWILIO_PHONE_NUMBER1,
         to_number: toNumber,
         override_agent_id: process.env.RETELL_AGENT_ID,
         metadata: callMetadata,
