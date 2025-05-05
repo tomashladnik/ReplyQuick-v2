@@ -1,6 +1,23 @@
 import { PrismaClient } from "@prisma/client";
+import axios from "axios";
 
 const prisma = new PrismaClient();
+
+const sendToN8n = async (event, callData) => {
+  try {
+    await axios.post(
+      'https://n8n-1-h79c.onrender.com/webhook/schedule-call', // Replace with your actual webhook path
+      {
+        event,
+        call: callData
+      }
+      // If you set up Basic Auth, add:
+      // ,{ auth: { username: process.env.N8N_USERNAME, password: process.env.N8N_PASSWORD } }
+    );
+  } catch (error) {
+    console.error("Failed to send to n8n:", error);
+  }
+};
 
 export async function POST(req) {
   try {
@@ -15,6 +32,14 @@ export async function POST(req) {
     }
 
     console.log(`Webhook event received: ${event}`, JSON.stringify(call, null, 2));
+
+    if (
+      event === 'call_ended' &&
+      call.qualification === 'qualified' &&
+      call.userSentiment === 'Positive'
+    ) {
+      await sendToN8n(event, call);
+    }
 
     switch (event) {
       case "call_started":
