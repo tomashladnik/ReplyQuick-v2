@@ -3,8 +3,8 @@
 import { ScheduleModal } from "@/components/appointments/ScheduleModal";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link as LinkIcon, Loader2, Plus } from "lucide-react";
 import { useEffect, useState } from 'react';
 import { toast } from "react-hot-toast";
@@ -15,6 +15,8 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [emailMessages, setEmailMessages] = useState([]);
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
     fetchBookings();
@@ -33,6 +35,27 @@ export default function AppointmentsPage() {
       toast.error('Failed to load appointments');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmailMessages = async (contactId) => {
+    try {
+      const response = await fetch(`/api/email/messages?contactId=${contactId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch email messages');
+      }
+      const data = await response.json();
+      setEmailMessages(data.messages || []);
+    } catch (err) {
+      console.error('Error fetching email messages:', err);
+      toast.error('Failed to load email messages');
+    }
+  };
+
+  const handleBookingSelect = (booking) => {
+    setSelectedBooking(booking);
+    if (booking.attendeeId) {
+      fetchEmailMessages(booking.attendeeId);
     }
   };
 
@@ -98,7 +121,13 @@ export default function AppointmentsPage() {
                   ) : (
                     <div className="space-y-4">
                       {bookings.map((booking) => (
-                        <Card key={booking.id} className="p-4">
+                        <Card 
+                          key={booking.id} 
+                          className={`p-4 cursor-pointer transition-colors ${
+                            selectedBooking?.id === booking.id ? 'bg-primary/5' : ''
+                          }`}
+                          onClick={() => handleBookingSelect(booking)}
+                        >
                           <div className="flex justify-between items-start">
                             <div>
                               <h3 className="font-semibold">{booking.title}</h3>
@@ -115,6 +144,46 @@ export default function AppointmentsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Email Messages Section */}
+              {selectedBooking && (
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle>Email Communication</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[400px]">
+                      {emailMessages.length > 0 ? (
+                        <div className="space-y-4">
+                          {emailMessages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex w-full ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
+                            >
+                              <div
+                                className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
+                                  ${msg.direction === "outbound"
+                                    ? "bg-primary text-primary-foreground rounded-br-none ml-8"
+                                    : "bg-muted rounded-bl-none mr-8"
+                                  }`}
+                              >
+                                <p className="text-sm break-words">{msg.content}</p>
+                                <p className="text-xs text-muted-foreground mt-1 text-right">
+                                  {new Date(msg.createdAt).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          No email messages yet
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Calendar */}

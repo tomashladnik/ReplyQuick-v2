@@ -37,13 +37,17 @@ export async function POST(req) {
     const to = emailData?.to?.[0] || '';
     const subject = emailData?.subject || '';
     const emailId = emailData?.email_id || '';
+    const text = emailData?.text || '';
+    const html = emailData?.html || '';
 
     console.log('Processed email details:', {
       type,
       from,
       to,
       subject,
-      emailId
+      emailId,
+      hasText: !!text,
+      hasHtml: !!html
     });
 
     // Handle different email event types
@@ -120,11 +124,25 @@ export async function POST(req) {
           console.log('Created new thread:', thread.id);
         }
 
+        // Extract the actual message content
+        let messageContent = '';
+        if (text) {
+          messageContent = text;
+        } else if (html) {
+          // If only HTML is available, use it
+          messageContent = html;
+        } else {
+          // If no content is available, use the subject
+          messageContent = subject;
+        }
+
+        console.log('Message content:', messageContent);
+
         // Store incoming message
         const message = await prisma.message.create({
           data: {
             threadId: thread.id,
-            content: emailData.text || emailData.html || subject, // Use text/html content or fallback to subject
+            content: messageContent,
             channel: 'email',
             direction: 'inbound',
             status: 'delivered',
