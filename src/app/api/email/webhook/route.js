@@ -46,67 +46,103 @@ export async function POST(req) {
       emailId
     });
 
-    // For email.sent events, we don't need to store them as they're already in our system
-    if (type === 'email.sent') {
-      console.log('Skipping email.sent event as it\'s already in our system');
-      return NextResponse.json({ success: true });
-    }
+    // Handle different email event types
+    switch (type) {
+      case 'email.sent':
+        console.log('Email sent event received');
+        // Update message status to 'sent' if we have the emailId
+        if (emailId) {
+          await prisma.message.updateMany({
+            where: {
+              metadata: {
+                path: ['emailId'],
+                equals: emailId
+              }
+            },
+            data: {
+              status: 'sent'
+            }
+          });
+        }
+        break;
 
-    // For email.received events, process the incoming email
-    if (type === 'email.received') {
-      // Find contact by email
-      const contact = await prisma.contact.findFirst({
-        where: {
-          email: from,
-        },
-      });
+      case 'email.delivered':
+        console.log('Email delivered event received');
+        // Update message status to 'delivered' if we have the emailId
+        if (emailId) {
+          await prisma.message.updateMany({
+            where: {
+              metadata: {
+                path: ['emailId'],
+                equals: emailId
+              }
+            },
+            data: {
+              status: 'delivered'
+            }
+          });
+        }
+        break;
 
-      console.log('Contact lookup result:', contact ? 'Found' : 'Not found');
-
-      if (!contact) {
-        console.log('Contact not found for email:', from);
-        return NextResponse.json({ success: true }); // Still return success to Resend
-      }
-
-      // Find or create thread
-      let thread = await prisma.thread.findFirst({
-        where: {
-          contactId: contact.id,
-        },
-      });
-
-      console.log('Thread lookup result:', thread ? 'Found' : 'Not found');
-
-      if (!thread) {
-        thread = await prisma.thread.create({
-          data: {
-            contactId: contact.id,
-            userId: contact.userId || 'system',
-            label: 'General',
+      case 'email.received':
+        console.log('Email received event - processing reply');
+        // Find contact by email
+        const contact = await prisma.contact.findFirst({
+          where: {
+            email: from,
           },
         });
-        console.log('Created new thread:', thread.id);
-      }
 
-      // Store incoming message
-      const message = await prisma.message.create({
-        data: {
-          threadId: thread.id,
-          content: emailData.text || emailData.html || subject, // Use text/html content or fallback to subject
-          channel: 'email',
-          direction: 'inbound',
-          status: 'delivered',
-          metadata: {
-            subject: subject,
-            from: from,
-            to: to,
-            emailId: emailId,
-            rawData: data
+        console.log('Contact lookup result:', contact ? 'Found' : 'Not found');
+
+        if (!contact) {
+          console.log('Contact not found for email:', from);
+          return NextResponse.json({ success: true }); // Still return success to Resend
+        }
+
+        // Find or create thread
+        let thread = await prisma.thread.findFirst({
+          where: {
+            contactId: contact.id,
           },
-        },
-      });
+        });
 
-      console.log('Stored new message:', message.id);
+        console.log('Thread lookup result:', thread ? 'Found' : 'Not found');
+
+        if (!thread) {
+          thread = await prisma.thread.create({
+            data: {
+              contactId: contact.id,
+              userId: contact.userId || 'system',
+              label: 'General',
+            },
+          });
+          console.log('Created new thread:', thread.id);
+        }
+
+        // Store incoming message
+        const message = await prisma.message.create({
+          data: {
+            threadId: thread.id,
+            content: emailData.text || emailData.html || subject, // Use text/html content or fallback to subject
+            channel: 'email',
+            direction: 'inbound',
+            status: 'delivered',
+            metadata: {
+              subject: subject,
+              from: from,
+              to: to,
+              emailId: emailId,
+              rawData: data
+            },
+          },
+        });
+
+        console.log('Stored new message:', message.id);
+        break;
+
+      default:
+        console.log('Unhandled email event type:', type);
     }
 
     return NextResponse.json({ success: true });
