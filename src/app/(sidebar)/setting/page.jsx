@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [hubSpotConnected, setHubSpotConnected] = useState(false);
   const [pipedriveConnected, setPipedriveConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -132,5 +132,23 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// Loading component
+function SettingsLoading() {
+  return (
+    <div className="flex min-h-screen bg-gray-50 items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  );
+}
+
+// Main page component
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsLoading />}>
+      <SettingsContent />
+    </Suspense>
   );
 }
