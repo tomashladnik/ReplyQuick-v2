@@ -10,28 +10,28 @@ export default function DashboardLayout({ children }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // const checkAuth = async () => {
-    //   try {
-    //     const token = localStorage.getItem("token")
-    //     if (!token) {
-    //       router.replace("/login")
-    //       return
-    //     }
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        if (!token) {
+          router.replace("/login")
+          return
+        }
 
-    //     // Verify token by making a request to a protected endpoint
-    //     await axiosInstance.get("/api/auth/user")
-    //     setLoading(false)
-    //   } catch (error) {
-    //     console.error("Authentication error:", error)
-    //     localStorage.removeItem("token")
-    //     setError("Your session has expired. Please log in again.")
-    //     setTimeout(() => {
-    //       router.replace("/login")
-    //     }, 2000)
-    //   }
-    // }
+        // Verify token by making a request to a protected endpoint
+        await axiosInstance.get("/api/auth/user")
+        setLoading(false)
+      } catch (error) {
+        console.error("Authentication error:", error)
+        localStorage.removeItem("token")
+        setError("Your session has expired. Please log in again.")
+        setTimeout(() => {
+          router.replace("/login")
+        }, 2000)
+      }
+    }
 
-    // checkAuth()
+    checkAuth()
   }, [router])
 
   if (loading) {
