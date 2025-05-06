@@ -57,7 +57,7 @@ model Call {
 model Contact {
   id        String   @id @default(uuid())
   userId    String?  // Optional now
-  fullName  String
+  Name  String
   email     String?  @unique
   phone     String
   category  String?

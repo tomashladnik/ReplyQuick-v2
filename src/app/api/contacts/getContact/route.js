@@ -7,7 +7,7 @@ export async function GET() {
     const contacts = await prisma.contact.findMany({
       select: {
         id: true,
-        fullName: true,
+        Name: true,
         phone: true,
         email: true,
       },

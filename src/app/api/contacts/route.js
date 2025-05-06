@@ -28,7 +28,7 @@ export async function POST(req) {
     const createdContacts = await prisma.contact.createMany({
       data: contacts.map(contact => ({
         userId: userId || null,  // Add the userId from JWT token
-        fullName: contact.fullName || "Unknown",
+        Name: contact.Name || "Unknown",
         email: contact.email || null,  // Null if missing
         phone: contact.phone,
         category: contact.category || "General",

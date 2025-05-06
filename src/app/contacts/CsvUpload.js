@@ -14,15 +14,37 @@ export default function CsvUpload({ onContactsUploaded }) {
     if (file) {
       Papa.parse(file, {
         complete: (result) => {
-          const parsedContacts = result.data.map((row) => ({
-            fullName: row[0],
-            email: row[1],
-            phone: row[2],
-            source: "csv_import",
-          }));
+          // Check if first row contains headers
+          const hasHeaders = result.data[0].some(header => 
+            header && typeof header === 'string' && 
+            (header.toLowerCase().includes('name') || 
+             header.toLowerCase().includes('email') || 
+             header.toLowerCase().includes('phone'))
+          );
+
+          const parsedContacts = result.data.slice(hasHeaders ? 1 : 0).map((row) => {
+            if (hasHeaders) {
+              // Map based on header names
+              const headers = result.data[0];
+              return {
+                Name: row[headers.findIndex(h => h.toLowerCase().includes('name'))] || '',
+                email: row[headers.findIndex(h => h.toLowerCase().includes('email'))] || '',
+                phone: row[headers.findIndex(h => h.toLowerCase().includes('phone'))] || '',
+                source: "csv_import",
+              };
+            } else {
+              // Assume fixed order: name, email, phone
+              return {
+                Name: row[0] || '',
+                email: row[1] || '',
+                phone: row[2] || '',
+                source: "csv_import",
+              };
+            }
+          });
           setContacts(parsedContacts);
         },
-        header: false, // Ensure first row is data
+        header: false, // We'll handle headers manually
       });
     }
   };
@@ -41,8 +63,8 @@ export default function CsvUpload({ onContactsUploaded }) {
 
   return (
     <div className="p-4 border rounded-lg bg-white shadow-md">
-      <h2 className="text-lg font-semibold mb-2">Upload CSV</h2>
-      <input type="file" accept=".csv" onChange={handleFileUpload} className="mb-3" />
+      <h2 className="text-lg font-semibold mb-2">Upload CSV xlsx xls</h2>
+      <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="mb-3" />
       <button
         onClick={uploadContacts}
         disabled={loading || contacts.length === 0}

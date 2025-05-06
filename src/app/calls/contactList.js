@@ -39,7 +39,7 @@ export default function ContactList() {
 
   const filteredContacts = contacts.filter(
     (contact) =>
-      contact?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact?.Name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact?.phone?.includes(searchTerm)
   );
   
@@ -80,7 +80,7 @@ export default function ContactList() {
           <TableBody>
             {displayContacts.map((contact) => (
               <TableRow key={contact.id}>
-                <TableCell className="font-medium">{contact.fullName}</TableCell>
+                <TableCell className="font-medium">{contact.Name}</TableCell>
                 <TableCell>{contact.phone}</TableCell>
                 {expanded && (
                   <TableCell>

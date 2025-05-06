@@ -23,7 +23,7 @@ const initiateCall = async (contact, callMetadataBase) => {
       ...callMetadataBase,
       callId: callRecord.id,
       contactInfo: {
-        name: contact.fullName,
+        name: contact.Name,
         phone: contact.phone,
         email: contact.email,
         category: contact.category,

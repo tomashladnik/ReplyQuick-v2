@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mail, MessageSquare, Phone, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 
 export default function ChatPage() {
   const [selectedContact, setSelectedContact] = useState(null);
@@ -17,14 +18,27 @@ export default function ChatPage() {
   const [communicationType, setCommunicationType] = useState("whatsapp"); // Default to WhatsApp
   const [smsMessages, setSmsMessages] = useState([]);
   const [whatsappMessages, setWhatsappMessages] = useState([]);
+  const [emailMessages, setEmailMessages] = useState([]);
+
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedContact) return;
     try {
       setMessage(""); // Clear message immediately for better UX
       
-      const endpoint = communicationType === "whatsapp" 
-        ? "/api/whatsapp/send" 
-        : "/api/sms/send";
+      let endpoint;
+      switch (communicationType) {
+        case "whatsapp":
+          endpoint = "/api/whatsapp/send";
+          break;
+        case "email":
+          endpoint = "/api/email/send";
+          break;
+        case "sms":
+          endpoint = "/api/sms/send";
+          break;
+        default:
+          throw new Error("Invalid communication type");
+      }
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -45,15 +59,26 @@ export default function ChatPage() {
 
       // Trigger immediate message refresh
       const fetchMessages = async () => {
-        const msgHistory = communicationType === "whatsapp" 
-          ? "/api/whatsapp/messages?contactId=" + selectedContact.id 
-          : "/api/sms/messages?contactId=" + selectedContact.id;
+        let msgHistory;
+        switch (communicationType) {
+          case "whatsapp":
+            msgHistory = "/api/whatsapp/messages?contactId=" + selectedContact.id;
+            break;
+          case "email":
+            msgHistory = "/api/email/messages?contactId=" + selectedContact.id;
+            break;
+          case "sms":
+            msgHistory = "/api/sms/messages?contactId=" + selectedContact.id;
+            break;
+        }
         
         const msgHistoryResponse = await fetch(msgHistory);
         const msgHistoryData = await msgHistoryResponse.json();
         
         if (communicationType === "whatsapp") {
           setWhatsappMessages(msgHistoryData);
+        } else if (communicationType === "email") {
+          setEmailMessages(msgHistoryData.messages || []);
         } else {
           setSmsMessages(msgHistoryData.messages || []);
         }
@@ -63,7 +88,7 @@ export default function ChatPage() {
       
     } catch (error) {
       console.error("Error sending message:", error);
-      // You might want to show an error toast/notification here
+      toast.error(error.message || "Failed to send message");
     }
   };
 
@@ -88,15 +113,26 @@ export default function ChatPage() {
       if (!selectedContact) return;
       
       try {
-        const msgHistory = communicationType === "whatsapp" 
-          ? "/api/whatsapp/messages?contactId=" + selectedContact.id 
-          : "/api/sms/messages?contactId=" + selectedContact.id;
+        let msgHistory;
+        switch (communicationType) {
+          case "whatsapp":
+            msgHistory = "/api/whatsapp/messages?contactId=" + selectedContact.id;
+            break;
+          case "email":
+            msgHistory = "/api/email/messages?contactId=" + selectedContact.id;
+            break;
+          case "sms":
+            msgHistory = "/api/sms/messages?contactId=" + selectedContact.id;
+            break;
+        }
         
         const msgHistoryResponse = await fetch(msgHistory);
         const msgHistoryData = await msgHistoryResponse.json();
         
         if (communicationType === "whatsapp") {
           setWhatsappMessages(msgHistoryData);
+        } else if (communicationType === "email") {
+          setEmailMessages(msgHistoryData.messages || []);
         } else {
           setSmsMessages(msgHistoryData.messages || []);
         }
@@ -180,7 +216,7 @@ export default function ChatPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm">{contact.fullName}</h3>
+                    <h3 className="font-semibold text-sm">{contact.Name}</h3>
                     <p className="text-xs text-muted-foreground truncate">
                       {contact.phone}
                     </p>
@@ -262,11 +298,11 @@ export default function ChatPage() {
                 <div className="flex items-center p-4 border-b bg-muted/30 rounded-t-lg mb-2">
                   <Avatar className="h-10 w-10 mr-4 ring-2 ring-background">
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {selectedContact.fullName?.[0]}
+                      {selectedContact.Name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h2 className="font-semibold text-lg">{selectedContact.fullName}</h2>
+                    <h2 className="font-semibold text-lg">{selectedContact.Name}</h2>
                     <p className="text-sm text-muted-foreground flex items-center">
                       <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                       {communicationType === "whatsapp" ? "WhatsApp" : 
@@ -308,9 +344,35 @@ export default function ChatPage() {
                       <p className="text-muted-foreground text-sm italic">
                         WhatsApp messages will appear here.
                       </p>
+                    ) : communicationType === "email" ? (
+                      emailMessages.length > 0 ? (
+                        emailMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex w-full ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
+                                ${msg.direction === "outbound"
+                                  ? "bg-primary text-primary-foreground rounded-br-none ml-8"
+                                  : "bg-muted rounded-bl-none mr-8"
+                                }`}
+                            >
+                              <p className="text-sm break-words">{msg.content}</p>
+                              <p className="text-xs text-muted-foreground mt-1 text-right">
+                                {new Date(msg.createdAt).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-sm italic text-center">
+                          No emails yet. Start the conversation!
+                        </p>
+                      )
                     ) : (
                       <p className="text-muted-foreground text-sm italic">
-                        Email conversation will appear here.
+                        SMS messages will appear here.
                       </p>
                     )}
                   </div>

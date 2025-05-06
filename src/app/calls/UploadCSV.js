@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { AlertCircle, CheckCircle, FileText, Upload, X } from "lucide-react"
 import { useState } from "react"
+import * as XLSX from 'xlsx'
 
 export default function UploadCSV() {
   const [file, setFile] = useState(null)
@@ -15,14 +16,16 @@ export default function UploadCSV() {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
-    if (selectedFile && selectedFile.name.endsWith(".csv")) {
+    if (selectedFile && (selectedFile.name.endsWith(".csv") || 
+                        selectedFile.name.endsWith(".xlsx") || 
+                        selectedFile.name.endsWith(".xls"))) {
       setFile(selectedFile)
       setUploadStatus(null)
       setErrorMessage("")
     } else {
       setFile(null)
       setUploadStatus("error")
-      setErrorMessage("Please select a valid CSV file")
+      setErrorMessage("Please select a valid CSV, XLSX, or XLS file")
     }
   }
 
@@ -33,9 +36,42 @@ export default function UploadCSV() {
     setUploadProgress(0)
 
     try {
-      // Read and parse the CSV file
-      const text = await file.text()
-      const contacts = parseCSV(text)
+      let contacts = []
+      
+      if (file.name.endsWith('.csv')) {
+        const text = await file.text()
+        contacts = parseCSV(text)
+      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        const arrayBuffer = await file.arrayBuffer()
+        const workbook = XLSX.read(arrayBuffer)
+        const firstSheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[firstSheetName]
+        const data = XLSX.utils.sheet_to_json(worksheet)
+        
+        contacts = data.map(row => {
+          // Find the columns that contain name, email, and phone
+          const nameKey = Object.keys(row).find(key => 
+            key.toLowerCase().includes('name')
+          )
+          const emailKey = Object.keys(row).find(key => 
+            key.toLowerCase().includes('email')
+          )
+          const phoneKey = Object.keys(row).find(key => 
+            key.toLowerCase().includes('phone')
+          )
+
+          return {
+            Name: nameKey ? row[nameKey] : '',
+            email: emailKey ? row[emailKey] : '',
+            phone: phoneKey ? row[phoneKey] : '',
+            source: "csv_import"
+          }
+        })
+      }
+
+      if (contacts.length === 0) {
+        throw new Error("No valid contacts found in the file")
+      }
 
       // Simulate upload progress
       const interval = setInterval(() => {
@@ -89,18 +125,39 @@ export default function UploadCSV() {
     setErrorMessage("")
   }
 
-  // Simple CSV parser (assumes headers: fullName, email, phone, category)
+  // Simple CSV parser (handles both header and non-header cases)
   const parseCSV = (csvText) => {
     const lines = csvText.trim().split("\n")
-    const headers = lines[0].split(",").map((header) => header.trim())
-    const contacts = []
+    const firstRow = lines[0].split(",").map(header => header.trim())
+    
+    // Check if first row contains headers
+    const hasHeaders = firstRow.some(header => 
+      header && typeof header === 'string' && 
+      (header.toLowerCase().includes('name') || 
+       header.toLowerCase().includes('email') || 
+       header.toLowerCase().includes('phone'))
+    )
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(",").map((value) => value.trim())
+    const contacts = []
+    const startIndex = hasHeaders ? 1 : 0
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const values = lines[i].split(",").map(value => value.trim())
       const contact = {}
-      headers.forEach((header, index) => {
-        contact[header] = values[index] || ""
-      })
+
+      if (hasHeaders) {
+        // Map based on header names
+        contact.Name = values[firstRow.findIndex(h => h.toLowerCase().includes('name'))] || ''
+        contact.email = values[firstRow.findIndex(h => h.toLowerCase().includes('email'))] || ''
+        contact.phone = values[firstRow.findIndex(h => h.toLowerCase().includes('phone'))] || ''
+      } else {
+        // Assume fixed order: name, email, phone
+        contact.Name = values[0] || ''
+        contact.email = values[1] || ''
+        contact.phone = values[2] || ''
+      }
+
+      contact.source = "csv_import"
       contacts.push(contact)
     }
 
@@ -115,12 +172,12 @@ export default function UploadCSV() {
             className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
             onClick={() => document.getElementById("csv-upload").click()}
           >
-            <input id="csv-upload" type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+            <input id="csv-upload" type="file" accept=".csv, .xlsx, .xls" className="hidden" onChange={handleFileChange} />
             <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-1">Upload Contact CSV</h3>
+            <h3 className="text-lg font-medium mb-1">Upload Contact CSV xlsx xls</h3>
             <p className="text-sm text-muted-foreground mb-2">Drag and drop your CSV file here, or click to browse</p>
             <p className="text-xs text-muted-foreground">
-              Your CSV should include name, phone number, and any additional contact information
+              Your CSV should include name, phone number, and any additional contact informations
             </p>
           </div>
         ) : (

@@ -14,7 +14,7 @@ export default function ContactsPage() {
     const res = await axios.get("/api/contacts");
     setContacts(res.data);
   };
-
+  console.log(contacts);
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Contacts</h1>
@@ -28,7 +28,7 @@ export default function ContactsPage() {
         <ul className="border rounded-lg p-4 bg-white shadow-md">
           {contacts.map((contact, index) => (
             <li key={index} className="border-b py-2">
-              {contact.fullName} - {contact.phone}
+              {contact.Name} - {contact.phone}
             </li>
           ))}
         </ul>

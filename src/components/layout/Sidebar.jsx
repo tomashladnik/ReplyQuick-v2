@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { BarChart2, HelpCircle, Home, LogOut, MessageSquare, Phone, Settings, Users } from "lucide-react"
+import { BarChart2, Calendar, HelpCircle, Home, LogOut, MessageSquare, Phone, Settings, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -12,6 +12,7 @@ export function Sidebar() {
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "AI Calls", href: "/calls", icon: Phone },
     { name: "Contacts", href: "/contacts", icon: Users },
+    { name: "Appointments", href: "/appointments", icon: Calendar },
     { name: "Analytics", href: "/analytics", icon: BarChart2 },
     { name: "Messages", href: "/msg", icon: MessageSquare },
     { name: "Settings", href: "/setting", icon: Settings },

@@ -113,7 +113,7 @@ export async function GET(req) {
         cost: true,
         transcriptText: true,
         contact: {
-          select: { phone: true, fullName: true },
+          select: { phone: true, Name: true },
         },
       },
     });
@@ -132,7 +132,7 @@ export async function GET(req) {
       cost: call.cost,
       transcriptText: call.transcriptText,
       contactPhone: call.contact?.phone || "Unknown",
-      contactName: call.contact?.fullName || "Unknown",
+      contactName: call.contact?.Name || "Unknown",
     }));
 
   
