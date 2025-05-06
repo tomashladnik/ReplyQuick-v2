@@ -3,8 +3,23 @@ import { NextResponse } from 'next/server';
 
 const prisma = new PrismaClient();
 
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function POST(req) {
   try {
+    console.log('Webhook received at:', new Date().toISOString());
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    
     const data = await req.json();
     console.log('Raw webhook data:', JSON.stringify(data, null, 2));
 
