@@ -118,7 +118,7 @@ export default function AppointmentsPage() {
             </div>
 
             {/* Calendar */}
-            <div>
+            {/* <div>
               <Card>
                 <CardHeader>
                   <CardTitle>Calendar</CardTitle>
@@ -132,7 +132,7 @@ export default function AppointmentsPage() {
                   />
                 </CardContent>
               </Card>
-            </div>
+            </div> */}
           </div>
         </div>
       </main>
