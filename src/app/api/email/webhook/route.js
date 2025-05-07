@@ -71,9 +71,18 @@ export async function POST(req) {
     const html = data['body-html'] || data.html || '';
     const event = data.event || data.type || '';
 
+    // Extract email from the from field
+    const extractEmail = (fromField) => {
+      const match = fromField.match(/<([^>]+)>/);
+      return match ? match[1] : fromField;
+    };
+
+    const fromEmail = extractEmail(from);
+
     console.log('Parsed email:', {
       event,
       from,
+      fromEmail,
       to,
       subject,
       messageId,
@@ -83,10 +92,10 @@ export async function POST(req) {
 
     // Handle incoming email (no event but has message content)
     if (!event && (text || html)) {
-      const contact = await prisma.contact.findFirst({ where: { email: from } });
-
+      const contact = await prisma.contact.findFirst({ where: { email: fromEmail } });
+      console.log('Contact:', contact);
       if (!contact) {
-        console.log(`No contact found for email: ${from}`);
+        console.log(`No contact found for email: ${fromEmail}`);
         return NextResponse.json({ success: true });
       }
 
