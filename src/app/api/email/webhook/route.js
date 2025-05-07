@@ -77,6 +77,31 @@ export async function POST(req) {
       return match ? match[1] : fromField;
     };
 
+    // Clean email content by removing quoted/replied message history
+    const cleanEmailContent = (content) => {
+      if (!content) return '';
+      
+      // Remove common email reply patterns
+      const patterns = [
+        /On.*wrote:.*$/s,  // Matches "On [date] [name] wrote:" and everything after
+        /Sent via QuickReply.*$/s,  // Matches "Sent via QuickReply" and everything after
+        /From:.*$/s,  // Matches "From:" and everything after
+        /^>.*$/gm,  // Matches lines starting with ">"
+        /^On.*\n.*wrote:.*$/s,  // Matches "On [date]\n[name] wrote:" pattern
+        /^>.*\n.*$/s,  // Matches quoted blocks
+        /^.*\n>.*$/s,  // Matches lines followed by quoted content
+        /^.*\nOn.*wrote:.*$/s,  // Matches content followed by "On ... wrote:"
+      ];
+
+      let cleanedContent = content;
+      patterns.forEach(pattern => {
+        cleanedContent = cleanedContent.replace(pattern, '');
+      });
+
+      // Remove multiple newlines and trim
+      return cleanedContent.replace(/\n{3,}/g, '\n\n').trim();
+    };
+
     const fromEmail = extractEmail(from);
 
     console.log('Parsed email:', {
@@ -112,7 +137,10 @@ export async function POST(req) {
         console.log('Created thread:', thread.id);
       }
 
-      const content = text || html || subject;
+      // Clean the content before storing
+      const cleanedText = cleanEmailContent(text);
+      const cleanedHtml = cleanEmailContent(html);
+      const content = cleanedText || cleanedHtml || subject;
 
       const message = await prisma.message.create({
         data: {
