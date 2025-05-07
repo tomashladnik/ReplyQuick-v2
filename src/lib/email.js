@@ -66,4 +66,25 @@ export const sendEmail = async (to, subject, html) => {
     });
     return { success: false, error: error.message };
   }
-}; 
+};
+
+export async function POST(req) {
+  try {
+    const contentType = req.headers.get('content-type') || '';
+    let data;
+
+    if (contentType.includes('application/json')) {
+      data = await req.json();
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formBody = await req.text();
+      data = Object.fromEntries(new URLSearchParams(formBody).entries());
+    } else {
+      throw new Error('Unsupported content type: ' + contentType);
+    }
+
+    // ...rest of your logic
+  } catch (error) {
+    console.error('Error in POST:', error);
+    return { success: false, error: error.message };
+  }
+} 

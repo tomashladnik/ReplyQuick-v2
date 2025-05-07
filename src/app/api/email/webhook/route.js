@@ -37,13 +37,24 @@ export async function POST(req) {
     
     // Get the raw body for signature verification
     const rawBody = await req.text();
-    let data;
+    console.log('Raw webhook body:', rawBody);
     
+    let data;
     try {
+      // Try parsing as JSON first
       data = JSON.parse(rawBody);
-    } catch (error) {
-      console.error('Failed to parse webhook body:', error);
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      console.log('Parsed JSON data:', data);
+    } catch (jsonError) {
+      console.log('Failed to parse as JSON, trying form data');
+      try {
+        // If JSON parsing fails, try parsing as form data
+        const formData = new URLSearchParams(rawBody);
+        data = Object.fromEntries(formData.entries());
+        console.log('Parsed form data:', data);
+      } catch (formError) {
+        console.error('Failed to parse webhook body:', { jsonError, formError });
+        return NextResponse.json({ error: 'Invalid webhook body format' }, { status: 400 });
+      }
     }
 
     // Verify webhook signature if Mailgun headers are present
@@ -60,16 +71,15 @@ export async function POST(req) {
       console.log('Mailgun signature headers not present, proceeding with caution');
     }
 
-    console.log('Raw webhook data:', JSON.stringify(data, null, 2));
-
     // Extract email details from the webhook data
-    const from = data.sender || data.from || '';
-    const to = data.recipient || data.to || '';
-    const subject = data.subject || '';
-    const messageId = data['Message-Id'] || data.message_id || '';
-    const text = data['body-plain'] || data.text || '';
-    const html = data['body-html'] || data.html || '';
-    const event = data.event || data.type || '';
+    // For incoming emails, we need to handle both the sender and recipient
+    const from = data.sender || data.from || data['sender'] || data['From'] || '';
+    const to = data.recipient || data.to || data['recipient'] || data['To'] || '';
+    const subject = data.subject || data['Subject'] || '';
+    const messageId = data['Message-Id'] || data.message_id || data['message-id'] || '';
+    const text = data['body-plain'] || data.text || data['body_plain'] || '';
+    const html = data['body-html'] || data.html || data['body_html'] || '';
+    const event = data.event || data.type || data['Event'] || '';
 
     console.log('Processed email details:', {
       event,
@@ -78,129 +88,129 @@ export async function POST(req) {
       subject,
       messageId,
       hasText: !!text,
-      hasHtml: !!html
+      hasHtml: !!html,
+      rawData: data
     });
 
-    // Handle different email event types
-    switch (event) {
-      case 'delivered':
-      case 'email.delivered':
-        console.log('Email delivered event received');
-        // Update message status to 'delivered' if we have the messageId
-        if (messageId) {
-          await prisma.message.updateMany({
-            where: {
-              metadata: {
-                path: ['messageId'],
-                equals: messageId
-              }
-            },
-            data: {
-              status: 'delivered'
-            }
-          });
-        }
-        break;
+    // For incoming emails, we'll treat them as 'inbound' events
+    if (!event && (text || html)) {
+      console.log('Processing as incoming email');
+      
+      // Find contact by email
+      const contact = await prisma.contact.findFirst({
+        where: {
+          email: from,
+        },
+      });
 
-      case 'opened':
-      case 'email.opened':
-        console.log('Email opened event received');
-        // Update message status to 'read' if we have the messageId
-        if (messageId) {
-          await prisma.message.updateMany({
-            where: {
-              metadata: {
-                path: ['messageId'],
-                equals: messageId
-              }
-            },
-            data: {
-              status: 'read'
-            }
-          });
-        }
-        break;
+      console.log('Contact lookup result:', contact ? 'Found' : 'Not found');
 
-      case 'clicked':
-      case 'email.clicked':
-        console.log('Email clicked event received');
-        // You can track link clicks if needed
-        break;
+      if (!contact) {
+        console.log('Contact not found for email:', from);
+        return NextResponse.json({ success: true }); // Still return success to Mailgun
+      }
 
-      case 'inbound':
-      case 'email.received':
-        console.log('Email received event - processing reply');
-        // Find contact by email
-        const contact = await prisma.contact.findFirst({
-          where: {
-            email: from,
-          },
-        });
+      // Find or create thread
+      let thread = await prisma.thread.findFirst({
+        where: {
+          contactId: contact.id,
+        },
+      });
 
-        console.log('Contact lookup result:', contact ? 'Found' : 'Not found');
+      console.log('Thread lookup result:', thread ? 'Found' : 'Not found');
 
-        if (!contact) {
-          console.log('Contact not found for email:', from);
-          return NextResponse.json({ success: true }); // Still return success to Mailgun
-        }
-
-        // Find or create thread
-        let thread = await prisma.thread.findFirst({
-          where: {
-            contactId: contact.id,
-          },
-        });
-
-        console.log('Thread lookup result:', thread ? 'Found' : 'Not found');
-
-        if (!thread) {
-          thread = await prisma.thread.create({
-            data: {
-              contactId: contact.id,
-              userId: contact.userId || 'system',
-              label: 'General',
-            },
-          });
-          console.log('Created new thread:', thread.id);
-        }
-
-        // Extract the actual message content
-        let messageContent = '';
-        if (text) {
-          messageContent = text;
-        } else if (html) {
-          // If only HTML is available, use it
-          messageContent = html;
-        } else {
-          // If no content is available, use the subject
-          messageContent = subject;
-        }
-
-        console.log('Message content:', messageContent);
-
-        // Store incoming message
-        const message = await prisma.message.create({
+      if (!thread) {
+        thread = await prisma.thread.create({
           data: {
-            threadId: thread.id,
-            content: messageContent,
-            channel: 'email',
-            direction: 'inbound',
-            status: 'delivered',
-            metadata: {
-              subject: subject,
-              from: from,
-              to: to,
-              messageId: messageId,
-              rawData: data
-            },
+            contactId: contact.id,
+            userId: contact.userId || 'system',
+            label: 'General',
           },
         });
+        console.log('Created new thread:', thread.id);
+      }
 
-        console.log('Stored new message:', message.id);
-        break;
+      // Extract the actual message content
+      let messageContent = '';
+      if (text) {
+        messageContent = text;
+      } else if (html) {
+        // If only HTML is available, use it
+        messageContent = html;
+      } else {
+        // If no content is available, use the subject
+        messageContent = subject;
+      }
 
-      default:
-        console.log('Unhandled email event type:', event);
+      console.log('Message content:', messageContent);
+
+      // Store incoming message
+      const message = await prisma.message.create({
+        data: {
+          threadId: thread.id,
+          content: messageContent,
+          channel: 'email',
+          direction: 'inbound',
+          status: 'delivered',
+          metadata: {
+            subject: subject,
+            from: from,
+            to: to,
+            messageId: messageId,
+            rawData: data
+          },
+        },
+      });
+
+      console.log('Stored new message:', message.id);
+    } else {
+      // Handle other event types
+      switch (event) {
+        case 'delivered':
+        case 'email.delivered':
+          console.log('Email delivered event received');
+          if (messageId) {
+            await prisma.message.updateMany({
+              where: {
+                metadata: {
+                  path: ['messageId'],
+                  equals: messageId
+                }
+              },
+              data: {
+                status: 'delivered'
+              }
+            });
+          }
+          break;
+
+        case 'opened':
+        case 'email.opened':
+          console.log('Email opened event received');
+          if (messageId) {
+            await prisma.message.updateMany({
+              where: {
+                metadata: {
+                  path: ['messageId'],
+                  equals: messageId
+                }
+              },
+              data: {
+                status: 'read'
+              }
+            });
+          }
+          break;
+
+        case 'clicked':
+        case 'email.clicked':
+          console.log('Email clicked event received');
+          break;
+
+        default:
+          console.log('Unhandled email event type:', event);
+          console.log('Full webhook data:', data);
+      }
     }
 
     return NextResponse.json({ success: true });
