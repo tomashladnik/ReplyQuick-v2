@@ -1,6 +1,11 @@
-import { Resend } from 'resend';
+import formData from 'form-data';
+import Mailgun from 'mailgun.js';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+  username: 'api',
+  key: process.env.MAILGUN_API_KEY,
+});
 
 export const sendEmail = async (to, subject, html) => {
   try {
@@ -10,22 +15,12 @@ export const sendEmail = async (to, subject, html) => {
       from: 'QuickReply <noreply@replyquick.ai>'
     });
     
-    const { data, error } = await resend.emails.send({
+    const data = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
       from: 'QuickReply <noreply@replyquick.ai>',
       to: [to],
       subject: subject,
       html: html,
     });
-
-    if (error) {
-      console.error('Error sending email:', {
-        error,
-        to,
-        errorMessage: error.message,
-        errorCode: error.code
-      });
-      return { success: false, error: error.message };
-    }
 
     console.log('Email sent successfully:', {
       to,
