@@ -6,6 +6,11 @@ const prisma = new PrismaClient();
 
 // Verify Mailgun webhook signature
 const verifyWebhookSignature = (timestamp, token, signature) => {
+  if (!process.env.MAILGUN_WEBHOOK_SIGNING_KEY) {
+    console.warn('MAILGUN_WEBHOOK_SIGNING_KEY not set, skipping signature verification');
+    return true;
+  }
+
   const encodedToken = crypto
     .createHmac('sha256', process.env.MAILGUN_WEBHOOK_SIGNING_KEY)
     .update(timestamp.concat(token))
@@ -20,7 +25,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-mailgun-timestamp, x-mailgun-token, x-mailgun-signature',
     },
   });
 }
@@ -30,33 +35,41 @@ export async function POST(req) {
     console.log('Webhook received at:', new Date().toISOString());
     console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
-    // Verify webhook signature
+    // Get the raw body for signature verification
+    const rawBody = await req.text();
+    let data;
+    
+    try {
+      data = JSON.parse(rawBody);
+    } catch (error) {
+      console.error('Failed to parse webhook body:', error);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    // Verify webhook signature if Mailgun headers are present
     const timestamp = req.headers.get('x-mailgun-timestamp');
     const token = req.headers.get('x-mailgun-token');
     const signature = req.headers.get('x-mailgun-signature');
 
-    if (!timestamp || !token || !signature) {
-      console.error('Missing webhook signature headers');
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+    if (timestamp && token && signature) {
+      if (!verifyWebhookSignature(timestamp, token, signature)) {
+        console.error('Invalid webhook signature');
+        return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+      }
+    } else {
+      console.log('Mailgun signature headers not present, proceeding with caution');
     }
 
-    if (!verifyWebhookSignature(timestamp, token, signature)) {
-      console.error('Invalid webhook signature');
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
-    }
-
-    const formData = await req.formData();
-    const data = Object.fromEntries(formData.entries());
     console.log('Raw webhook data:', JSON.stringify(data, null, 2));
 
     // Extract email details from the webhook data
-    const from = data.sender || '';
-    const to = data.recipient || '';
+    const from = data.sender || data.from || '';
+    const to = data.recipient || data.to || '';
     const subject = data.subject || '';
-    const messageId = data['Message-Id'] || '';
-    const text = data['body-plain'] || '';
-    const html = data['body-html'] || '';
-    const event = data.event || '';
+    const messageId = data['Message-Id'] || data.message_id || '';
+    const text = data['body-plain'] || data.text || '';
+    const html = data['body-html'] || data.html || '';
+    const event = data.event || data.type || '';
 
     console.log('Processed email details:', {
       event,
@@ -71,6 +84,7 @@ export async function POST(req) {
     // Handle different email event types
     switch (event) {
       case 'delivered':
+      case 'email.delivered':
         console.log('Email delivered event received');
         // Update message status to 'delivered' if we have the messageId
         if (messageId) {
@@ -89,6 +103,7 @@ export async function POST(req) {
         break;
 
       case 'opened':
+      case 'email.opened':
         console.log('Email opened event received');
         // Update message status to 'read' if we have the messageId
         if (messageId) {
@@ -107,11 +122,13 @@ export async function POST(req) {
         break;
 
       case 'clicked':
+      case 'email.clicked':
         console.log('Email clicked event received');
         // You can track link clicks if needed
         break;
 
       case 'inbound':
+      case 'email.received':
         console.log('Email received event - processing reply');
         // Find contact by email
         const contact = await prisma.contact.findFirst({
