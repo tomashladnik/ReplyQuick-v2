@@ -34,9 +34,9 @@ export async function POST(req) {
     console.log(`Webhook event received: ${event}`, JSON.stringify(call, null, 2));
 
     if (
-      event === 'call_ended' &&
-      call.qualification === 'qualified' &&
-      call.userSentiment === 'Positive'
+      (event === 'call_analyzed' &&
+        call.call_analysis &&
+        call.call_analysis.user_sentiment === 'Positive')
     ) {
       await sendToN8n(event, call);
     }
