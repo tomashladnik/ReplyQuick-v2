@@ -1,14 +1,43 @@
 import formData from 'form-data';
 import Mailgun from 'mailgun.js';
 
-const mailgun = new Mailgun(formData);
-const mg = mailgun.client({
-  username: 'api',
-  key: process.env.MAILGUN_API_KEY,
-});
+// Validate required environment variables
+const validateEnvVariables = () => {
+  const requiredVars = {
+    MAILGUN_API_KEY: process.env.MAILGUN_API_KEY,
+    MAILGUN_DOMAIN: process.env.MAILGUN_DOMAIN,
+  };
+
+  const missingVars = Object.entries(requiredVars)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  }
+};
+
+// Initialize Mailgun client
+let mg;
+try {
+  validateEnvVariables();
+  const mailgun = new Mailgun(formData);
+  mg = mailgun.client({
+    username: 'api',
+    key: process.env.MAILGUN_API_KEY,
+  });
+} catch (error) {
+  console.error('Failed to initialize Mailgun client:', error);
+  throw error;
+}
 
 export const sendEmail = async (to, subject, html) => {
   try {
+    // Validate inputs
+    if (!to || !subject || !html) {
+      throw new Error('Missing required email parameters: to, subject, or html');
+    }
+
     console.log('Attempting to send email:', {
       to,
       subject,
