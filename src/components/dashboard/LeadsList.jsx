@@ -1,57 +1,29 @@
-'use client';
+"use client";
+import { useEffect, useState } from 'react';
 
 export function LeadsList() {
-  // Sample leads data
-  const sampleLeads = [
-    {
-      id: 1,
-      fullName: 'John Dove',
-      phone: '+1 223 456 7890',
-      email: 'john@example.com',
-      status: 'new',
-      avatarUrl: '/avatars/john.jpg'
-    },
-    {
-      id: 2,
-      fullName: 'Paul Johns',
-      phone: '+1 223 456 7890',
-      email: 'paul@example.com',
-      status: 'contacted',
-      avatarUrl: '/avatars/paul.jpg'
-    },
-    {
-      id: 3,
-      fullName: 'David Johnson',
-      phone: '+1 223 456 7890',
-      email: 'david@example.com',
-      status: 'interested',
-      avatarUrl: '/avatars/david.jpg'
-    },
-    {
-      id: 4,
-      fullName: 'Lucy Jones',
-      phone: '+1 223 456 7890',
-      email: 'lucy@example.com',
-      status: 'closed',
-      avatarUrl: '/avatars/lucy.jpg'
-    },
-    {
-      id: 5,
-      fullName: 'Sarah Lynn',
-      phone: '+1 223 456 7890',
-      email: 'sarah@example.com',
-      status: 'new',
-      avatarUrl: '/avatars/sarah.jpg'
-    },
-    {
-      id: 6,
-      fullName: 'George Steven',
-      phone: '+1 223 456 7890',
-      email: 'george@example.com',
-      status: 'closed',
-      avatarUrl: '/avatars/george.jpg'
-    }
-  ];
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [timeFilter, setTimeFilter] = useState('30');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const response = await fetch('/api/contacts/getContact');
+        const data = await response.json();
+        console.log(data);
+        setLeads(data);
+      } catch (error) {
+        console.error('Error fetching leads:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeads();
+  }, []);
 
   const statusColors = {
     new: 'bg-yellow-50 border-yellow-200',
@@ -67,6 +39,24 @@ export function LeadsList() {
     closed: '🔴'
   };
 
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = lead.Name.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+                         lead.email.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+                         lead.phone.includes(searchTerm);
+    const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white p-6 rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
@@ -75,65 +65,97 @@ export function LeadsList() {
           <input 
             type="search" 
             placeholder="Search leads..." 
-            className="border rounded p-2"
+            className="border rounded p-2 text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <select className="border rounded p-2">
-            <option>Last 30 days</option>
-            <option>Last 60 days</option>
-            <option>All time</option>
+          <select 
+            className="border rounded p-2 text-sm"
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="60">Last 60 days</option>
+            <option value="all">All time</option>
+          </select>
+          <select 
+            className="border rounded p-2 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Status</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="interested">Interested</option>
+            <option value="closed">Closed</option>
           </select>
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
-        <span className="text-sm">
-          <span className="mr-2">⚪</span>New
-        </span>
-        <span className="text-sm">
-          <span className="mr-2">🔵</span>Contacted
-        </span>
-        <span className="text-sm">
-          <span className="mr-2">🟢</span>Interested
-        </span>
-        <span className="text-sm">
-          <span className="mr-2">🔴</span>Closed
-        </span>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {sampleLeads.map((lead) => (
-          <div 
-            key={lead.id} 
-            className={`${statusColors[lead.status]} p-4 rounded-lg relative border`}
-          >
-            <button className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center hover:bg-gray-50">
-              +
-            </button>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
-                {/* Placeholder for avatar */}
-                <div className="w-full h-full bg-gray-300" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{lead.fullName}</h3>
-                  <span>{statusDot[lead.status]}</span>
+      {filteredLeads.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No leads found matching your criteria
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLeads.map((lead) => (
+            <div 
+              key={lead.id} 
+              className={`${statusColors[lead.status]} p-4 rounded-lg relative border hover:shadow-md transition-shadow`}
+            >
+              <button 
+                className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center hover:bg-gray-50"
+                onClick={() => {
+                  // Add quick action menu here
+                  console.log('Quick action for:', lead.fullName);
+                }}
+              >
+                +
+              </button>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
+                  {lead.avatarUrl ? (
+                    <img 
+                      src={lead.avatarUrl} 
+                      alt={lead.Name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500">
+                      {lead.Name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{lead.Name}</h3>
+                    <span>{statusDot[lead.status]}</span>
+                  </div>
+                  <p className="text-sm text-gray-500">{lead.company || 'No company'}</p>
                 </div>
               </div>
-            </div>
-            <div className="text-sm text-gray-600 ml-[60px]">
-              <div className="flex items-center gap-2">
-                <span>📞</span>
-                <span>{lead.phone}</span>
+              <div className="text-sm text-gray-600 ml-[60px]">
+                <div className="flex items-center gap-2">
+                  <span>📞</span>
+                  <span>{lead.phone}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>✉️</span>
+                  <span>{lead.email}</span>
+                </div>
+                {lead.lastContact && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span>🕒</span>
+                    <span>Last contact: {new Date(lead.lastContact).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <span>✉️</span>
-                <span>{lead.email}</span>
-              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
-} 
+}

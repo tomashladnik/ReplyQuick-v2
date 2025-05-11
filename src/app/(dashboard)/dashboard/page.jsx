@@ -2,7 +2,6 @@
 import { InsightsChart } from '@/components/dashboard/InsightsChart';
 import { LeadsList } from '@/components/dashboard/LeadsList';
 import { useEffect, useState } from 'react';
-
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
