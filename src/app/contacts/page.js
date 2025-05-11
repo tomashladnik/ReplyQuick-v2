@@ -1,37 +1,49 @@
 "use client";
-import axios from "axios";
-import { useEffect, useState } from "react";
-import CsvUpload from "./CsvUpload";
+
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import UploadCSV from "../calls/UploadCSV";
+import ContactList from "../calls/contactList";
 
 export default function ContactsPage() {
-  const [contacts, setContacts] = useState([]);
-
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
-  const fetchContacts = async () => {
-    const res = await axios.get("/api/contacts");
-    setContacts(res.data);
-  };
-  console.log(contacts);
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Contacts</h1>
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Sidebar />
+      <div className="flex-1 overflow-y-auto">
+        <div className="container mx-auto py-6 px-4 md:px-6 max-w-7xl">
+          <header className="mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                  Contacts
+                </h1>
+                <p className="text-muted-foreground mt-1">Manage and import your contacts</p>
+              </div>
+            </div>
+          </header>
 
-      {/* CSV Upload Component */}
-      <CsvUpload onContactsUploaded={fetchContacts} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Contacts</CardTitle>
+                <CardDescription>Import your contacts via CSV, XLSX, or XLS file</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UploadCSV />
+              </CardContent>
+            </Card>
 
-      {/* Contacts List */}
-      <div className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Uploaded Contacts</h2>
-        <ul className="border rounded-lg p-4 bg-white shadow-md">
-          {contacts.map((contact, index) => (
-            <li key={index} className="border-b py-2">
-              {contact.Name} - {contact.phone}
-            </li>
-          ))}
-        </ul>
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Management</CardTitle>
+                <CardDescription>View and manage your contact list</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ContactList expanded={true} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
