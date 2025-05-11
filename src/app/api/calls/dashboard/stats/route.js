@@ -1,17 +1,18 @@
 import { PrismaClient } from "@prisma/client";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
 // Helper function to get user ID from token
-const getUserIdFromToken = (req) => {
+const getUserIdFromToken = async (req) => {
   try {
     const token = req.cookies.get("auth_token")?.value;
     if (!token) return null;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "reply");
-    return decoded.id;
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const { payload } = await jwtVerify(token, secret);
+    return payload.id;
   } catch (error) {
     console.error("JWT verification failed:", error.message);
     return null;

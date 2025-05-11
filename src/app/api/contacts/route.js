@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
@@ -17,8 +17,9 @@ export async function POST(req) {
     console.log("token", token);
 
     // Verify the token and get userId
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "reply");
-    const userId = decoded.id;
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.id;
 
     if (!contacts || contacts.length === 0) {
       return NextResponse.json({ error: "No contacts provided" }, { status: 400 });

@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import axios from "axios";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
@@ -78,8 +78,9 @@ export async function POST(req) {
     if (token) {
       try {
         // Verify the token and get userId
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "reply");
-        userId = decoded.id;
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+        const { payload } = await jwtVerify(token, secret);
+        userId = payload.id;
       } catch (error) {
         console.warn("Invalid or expired token");
       }

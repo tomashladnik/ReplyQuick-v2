@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { SignJWT } from "jose";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
@@ -43,16 +43,16 @@ export async function POST(request) {
     }
 
     // Generate JWT Token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        name: user.fullName,
-        phone: user.phone
-      },
-      process.env.JWT_SECRET || "reply",
-      { expiresIn: "24h" } // Extended to 24 hours
-    );
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const token = await new SignJWT({
+      id: user.id,
+      email: user.email,
+      name: user.fullName,
+      phone: user.phone
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('24h')
+      .sign(secret);
 
     // Create response with user data
     const response = NextResponse.json({

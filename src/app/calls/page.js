@@ -95,7 +95,6 @@ export default function AICallsPage() {
     try {
       setLoading(true);
       const response = await axios.get("/api/calls/dashboard/stats", { withCredentials: true });
-      
       setStats(response.data);
       toast.success("Dashboard stats loaded successfully");
     } catch (err) {
