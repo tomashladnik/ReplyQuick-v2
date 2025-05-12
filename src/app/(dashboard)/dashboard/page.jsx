@@ -2,6 +2,7 @@
 import { InsightsChart } from '@/components/dashboard/InsightsChart';
 import { LeadsList } from '@/components/dashboard/LeadsList';
 import { useEffect, useState } from 'react';
+import { RxAvatar } from "react-icons/rx";
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,11 +30,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-semibold">Welcome! 👋</h1>
         <div className="flex items-center gap-3">
-          <img 
-            src="/avatar.png" 
-            alt="Profile" 
-            className="w-8 h-8 rounded-full"
-          />
+          <RxAvatar className="w-8 h-8 rounded-full" />
           <span>{user?.name || "Guest"}</span>
         </div>
       </div>
