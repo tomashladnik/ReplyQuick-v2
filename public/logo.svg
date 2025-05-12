@@ -1,0 +1,10 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="48" height="48" rx="12" fill="#242328"/>
+  <g>
+    <path d="M36 24c0 6.627-5.373 12-12 12-1.32 0-2.59-.21-3.78-.6l-5.13 1.44a1 1 0 0 1-1.23-1.23l1.44-5.13A11.96 11.96 0 0 1 12 24c0-6.627 5.373-12 12-12s12 5.373 12 12z" fill="#fff"/>
+    <ellipse cx="24" cy="24" rx="7" ry="3.5" stroke="#242328" stroke-width="1.5" fill="none"/>
+    <ellipse cx="24" cy="24" rx="3.5" ry="7" stroke="#242328" stroke-width="1.5" fill="none"/>
+    <ellipse cx="24" cy="24" rx="5.5" ry="5.5" stroke="#242328" stroke-width="1.5" fill="none"/>
+    <text x="19.5" y="27.5" font-family="Inter, Arial, sans-serif" font-size="7" font-weight="bold" fill="#242328">AI</text>
+  </g>
+</svg> 
