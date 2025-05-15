@@ -44,7 +44,7 @@ export async function POST(req) {
     });
 
     // 🔄 Forward data to n8n for automatic reply logic
-    await fetch("https://n8n-1-h79c.onrender.com/webhook/9da0bdca-824b-48c3-87aa-eb121e51ba2e/webhook", {
+    await fetch("https://replyquickai.app.n8n.cloud/webhook/sms-inbound", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
