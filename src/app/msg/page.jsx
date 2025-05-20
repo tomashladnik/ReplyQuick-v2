@@ -1,6 +1,5 @@
 "use client";
 
-import { Sidebar } from "@/components/layout/Sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -177,23 +176,17 @@ export default function ChatPage() {
    }, [showSmsMessages]);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 bg-muted/20 border-r">
-        <Sidebar />
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 grid grid-cols-12 gap-6 p-6">
+    <div className="w-full min-h-screen bg-background overflow-x-hidden">
+      <main className="flex flex-col md:grid md:grid-cols-12 gap-2 sm:gap-4 md:gap-6 p-2 sm:p-4 md:p-6 w-full">
         {/* Contact List */}
-        <Card className="col-span-4 xl:col-span-3 p-4 border-none shadow-md h-full">
+        <Card className="w-full md:col-span-4 xl:col-span-3 p-2 sm:p-4 border-none shadow-md h-[350px] md:h-full mb-2 md:mb-0">
           <div className="flex flex-col h-full">
             {/* Search */}
             <div className="relative mb-4">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search contacts..."
-                className="pl-10 h-11 bg-muted/50 border-none focus-visible:ring-1"
+                className="pl-10 h-10 sm:h-11 bg-muted/50 border-none focus-visible:ring-1"
               />
             </div>
 
@@ -259,12 +252,12 @@ export default function ChatPage() {
         </Card>
 
         {/* Chat Box */}
-        <Card className="col-span-8 xl:col-span-9 p-4 border-none shadow-md h-full">
+        <Card className="w-full md:col-span-8 xl:col-span-9 p-2 sm:p-4 border-none shadow-md h-[500px] md:h-full">
           <div className="flex flex-col h-full">
             {selectedContact ? (
               <>
                 {/* Communication Type Selector */}
-                <div className="flex items-center justify-center gap-2 p-2 mb-4 bg-muted/20 rounded-lg">
+                <div className="flex flex-wrap items-center justify-center gap-2 p-2 mb-4 bg-muted/20 rounded-lg">
                   <Button
                     variant={communicationType === "whatsapp" ? "default" : "ghost"}
                     size="sm"
@@ -295,7 +288,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Header */}
-                <div className="flex items-center p-4 border-b bg-muted/30 rounded-t-lg mb-2">
+                <div className="flex items-center p-2 sm:p-4 border-b bg-muted/30 rounded-t-lg mb-2">
                   <Avatar className="h-10 w-10 mr-4 ring-2 ring-background">
                     <AvatarFallback className="bg-primary/10 text-primary">
                       {selectedContact.Name?.[0]}
@@ -312,7 +305,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 px-4 py-2 messages-container" style={{ minHeight: 0, maxHeight: '60vh' }}>
+                <ScrollArea className="flex-1 px-2 sm:px-4 py-2 messages-container" style={{ minHeight: 0, maxHeight: '40vh' }}>
                   <div className="space-y-4">
                     {communicationType === "sms" ? (
                       showSmsMessages.length > 0 ? (
@@ -379,13 +372,13 @@ export default function ChatPage() {
                 </ScrollArea>
 
                 {/* Input Area */}
-                <div className="mt-2 border-t p-4 bg-muted/30 rounded-b-lg">
-                  <div className="flex gap-3">
+                <div className="mt-2 border-t p-2 sm:p-4 bg-muted/30 rounded-b-lg">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
                     <Input
                       placeholder={`Type a ${communicationType} message...`}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      className="h-11 bg-background border-none focus-visible:ring-1"
+                      className="h-10 sm:h-11 bg-background border-none focus-visible:ring-1 w-full"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -395,7 +388,7 @@ export default function ChatPage() {
                     />
                     <Button 
                       size="lg" 
-                      className="px-6"
+                      className="w-full sm:w-auto px-6"
                       onClick={handleSendMessage}
                     >
                       Send

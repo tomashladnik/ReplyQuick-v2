@@ -1,22 +1,14 @@
 "use client";
 
-import { Sidebar } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
   Cell,
   Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  Tooltip
 } from "@/components/ui/chart";
 import {
   Table,
@@ -28,10 +20,9 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axios from "axios";
-import { BarChart2, Clock, Phone, TrendingUp, Upload } from "lucide-react";
+import { BarChart2, Clock, Phone, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import CallDetailModal from "./CallDetailModal";
 import ContactList from "./contactList";
 import UploadCSV from "./UploadCSV";
 
@@ -130,7 +121,6 @@ export default function AICallsPage() {
   if (error) {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
         <div className="flex-1 overflow-y-auto">
           <div className="container mx-auto py-6 px-4 md:px-6 max-w-7xl">
             <div className="text-red-500">Error: {error}</div>
@@ -217,308 +207,157 @@ export default function AICallsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto py-6 px-4 md:px-6 max-w-7xl">
-          <header className="mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  AI Calls Dashboard
-                </h1>
-                <p className="text-muted-foreground mt-1">Manage and monitor your automated call campaigns</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={() => setActiveTab("upload")} className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Upload Contacts
-                </Button>
-                <Button onClick={handleCallAll} disabled={loading} className="gap-2">
-                  <Phone className="h-4 w-4" />
-                  {loading ? "Loading..." : "Call All Contacts"}
-                </Button>
-              </div>
+    <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+      <div className="px-2 sm:px-4 py-4 max-w-full">
+        <header className="mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold">AI Calls Dashboard</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">
+                Manage and monitor your automated call campaigns
+              </p>
             </div>
-          </header>
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => setActiveTab("upload")}>Upload Contacts</Button>
+              <Button className="w-full sm:w-auto" onClick={handleCallAll} disabled={loading}>{loading ? "Loading..." : "Call All Contacts"}</Button>
+            </div>
+          </div>
+        </header>
+        <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          <TabsList className="flex w-full overflow-x-auto">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="contacts">Contacts</TabsTrigger>
+            <TabsTrigger value="upload">Upload</TabsTrigger>
+          </TabsList>
 
-          <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid grid-cols-3 w-full max-w-md">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="contacts">Contacts</TabsTrigger>
-              <TabsTrigger value="upload">Upload</TabsTrigger>
-            </TabsList>
+          <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+              <MetricCard
+                title="Total Calls"
+                value={stats?.totalCalls || 0}
+                description="Total calls made"
+                icon={<Phone className="h-4 w-4" />}
+              />
+              <MetricCard
+                title="Success Rate"
+                value={`${stats?.successRate || 0}%`}
+                description="Successful calls"
+                icon={<TrendingUp className="h-4 w-4" />}
+              />
+              <MetricCard
+                title="Avg. Duration"
+                value={formatTime(stats?.averageDuration || 0)}
+                description="Average call duration"
+                icon={<Clock className="h-4 w-4" />}
+              />
+              <MetricCard
+                title="Active Campaigns"
+                value={stats?.activeCampaigns || 0}
+                description="Running campaigns"
+                icon={<BarChart2 className="h-4 w-4" />}
+              />
+            </div>
 
-            <TabsContent value="dashboard" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <MetricCard
-                  title="Total Calls"
-                  value={stats ? stats.totalCalls : "Loading..."}
-                  description={stats ? `+${Math.round(stats.totalCalls * 0.12)} from last week` : ""}
-                  icon={<Phone className="h-5 w-5" />}
-                  trend={<TrendingUp className="h-4 w-4 text-green-500" />}
-                />
-                <MetricCard
-                  title="Success Rate"
-                  value={stats ? `${stats.successRate}%` : "Loading..."}
-                  description={stats ? `${stats.successRate > 82 ? "Above" : "Below"} average` : ""}
-                  icon={<BarChart2 className="h-5 w-5" />}
-                  trend={<TrendingUp className="h-4 w-4 text-green-500" />}
-                />
-                <MetricCard
-                  title="Avg. Duration"
-                  value={stats ? formatTime(stats.avgDuration) : "Loading..."}
-                  description={stats ? "Across all calls" : ""}
-                  icon={<Clock className="h-5 w-5" />}
-                  trend={<TrendingUp className="h-4 w-4 text-green-500" />}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Call Trends</CardTitle>
-                    <CardDescription>Daily call volume and success rate</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={stats?.callTrends || []}
-                          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+              {/* Call Status Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Call Status Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] sm:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={getCallStatusData()}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
                         >
-                          <defs>
-                            <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.8} />
-                              <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0.1} />
-                            </linearGradient>
-                            <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.8} />
-                              <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0.1} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--background))",
-                              borderColor: "hsl(var(--border))",
-                            }}
-                          />
-                          <Legend />
-                          <Area
-                            type="monotone"
-                            dataKey="totalCalls"
-                            name="Total Calls"
-                            stroke={CHART_COLORS.primary}
-                            fillOpacity={1}
-                            fill="url(#colorTotal)"
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="completed"
-                            name="Completed"
-                            stroke={CHART_COLORS.success}
-                            fillOpacity={1}
-                            fill="url(#colorCompleted)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Call Direction</CardTitle>
-                    <CardDescription>Distribution of inbound vs outbound calls</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80 flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={getDirectionData()}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {getDirectionData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value) => [`${value} calls`, "Count"]}
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--background))",
-                              borderColor: "hsl(var(--border))",
-                            }}
-                          />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Call Status Distribution</CardTitle>
-                    <CardDescription>Breakdown of call outcomes</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80 flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={getCallStatusData()}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {getCallStatusData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value) => [`${value} calls`, "Count"]}
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--background))",
-                              borderColor: "hsl(var(--border))",
-                            }}
-                          />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Disconnection Reasons</CardTitle>
-                    <CardDescription>Frequency of call disconnection reasons</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={getDisconnectionReasonData()}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--background))",
-                              borderColor: "hsl(var(--border))",
-                            }}
-                          />
-                          <Legend />
-                          <Bar dataKey="value" name="Count" radius={[4, 4, 0, 0]}>
-                            {getDisconnectionReasonData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Qualification Breakdown</CardTitle>
-                    <CardDescription>Distribution of call qualifications</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80 flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={getQualificationData()}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {getQualificationData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value) => [`${value} calls`, "Count"]}
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--background))",
-                              borderColor: "hsl(var(--border))",
-                            }}
-                          />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Calls</CardTitle>
-                  <CardDescription>History of your recent AI calls</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <CallTable recentCalls={stats?.recentCalls} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="contacts">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Contact Management</CardTitle>
-                  <CardDescription>View and manage your contact list</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-6">
-                    <Button onClick={handleCallAll} disabled={loading} className="gap-2 2xl:space-y-6">
-                      <Phone className="h-4 w-4" />
-                      {loading ? "Calling..." : "Call All Contacts"}
-                    </Button>
+                          {getCallStatusData().map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                  <ContactList expanded={true} />
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            <TabsContent value="upload">
+              {/* Call Direction Distribution */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Upload Contacts</CardTitle>
-                  <CardDescription>Import your contacts via CSV file</CardDescription>
+                  <CardTitle>Call Direction</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <UploadCSV />
+                  <div className="h-[300px] sm:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={getDirectionData()}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {getDirectionData().map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            </div>
 
-          {selectedCall && <CallDetailModal call={selectedCall} onClose={() => setSelectedCall(null)} />}
-        </div>
+            {/* Recent Calls Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Calls</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <CallTable recentCalls={stats?.recentCalls || []} />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contacts">
+            <ContactList expanded={true} />
+          </TabsContent>
+
+          <TabsContent value="upload">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Contacts</CardTitle>
+                <CardDescription>Import your contacts via CSV, XLSX, or XLS file</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UploadCSV />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-      <Toaster position="top-right" /> {/* Add Toaster component */}
+      <Toaster position="top-right" />
     </div>
   );
 }
 
-function MetricCard({ title, value, description, icon, trend }) {
+function MetricCard({ title, value, description, icon }) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -528,10 +367,7 @@ function MetricCard({ title, value, description, icon, trend }) {
         </div>
         <div className="mt-3">
           <div className="text-2xl font-bold">{value}</div>
-          <div className="flex items-center gap-1 mt-1">
-            {trend}
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </CardContent>
     </Card>

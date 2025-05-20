@@ -90,33 +90,33 @@ export function InsightsChart() {
   }, [timeRange]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Contacts</h3>
-          <p className="text-2xl font-semibold mt-2">{stats.totalContacts}</p>
+          <p className="text-xl sm:text-2xl font-semibold mt-2">{stats.totalContacts}</p>
           {/* <div className="mt-2 text-sm text-green-600">↑ 12% from last month</div> */}
         </div>
        
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Appointments</h3>
-          <p className="text-2xl font-semibold mt-2">{stats.appointments}</p>
+          <p className="text-xl sm:text-2xl font-semibold mt-2">{stats.appointments}</p>
           {/* <div className="mt-2 text-sm text-red-600">↓ 3% from last month</div> */}
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Messages Sent</h3>
-          <p className="text-2xl font-semibold mt-2">{stats.messages}</p>
+          <p className="text-xl sm:text-2xl font-semibold mt-2">{stats.messages}</p>
           {/* <div className="mt-2 text-sm text-green-600">↑ 15% from last month</div> */}
         </div>
       </div>
 
       {/* Chart */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold">Activity Overview</h2>
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h2 className="text-base sm:text-lg font-semibold">Activity Overview</h2>
           <select 
-            className="border rounded p-2 text-sm"
+            className="border rounded p-2 text-sm w-full sm:w-auto"
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
           >
@@ -125,13 +125,28 @@ export function InsightsChart() {
             <option value="yearly">Last 12 Months</option>
           </select>
         </div>
-        <div className="h-80">
+        <div className="h-60 sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }}
+              />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip 
+                contentStyle={{ 
+                  fontSize: '12px',
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  padding: '0.5rem'
+                }}
+              />
               <Area 
                 type="monotone" 
                 dataKey="contacts" 
