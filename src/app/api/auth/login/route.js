@@ -6,9 +6,11 @@ import { NextResponse } from "next/server";
 export async function POST(request) {
   try {
     const { emailOrPhone, password } = await request.json();
+    console.log("Login attempt for:", emailOrPhone);
 
     // Validate input
     if (!emailOrPhone || !password) {
+      console.log("Missing fields:", { emailOrPhone: !!emailOrPhone, password: !!password });
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -19,11 +21,16 @@ export async function POST(request) {
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: emailOrPhone.toLowerCase() }, // Case insensitive search
+          { email: emailOrPhone },
           { phone: emailOrPhone }
         ],
       },
     });
+
+    console.log("User found:", !!user);
+    if (user) {
+      console.log("Found user email:", user.email);
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -34,6 +41,7 @@ export async function POST(request) {
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log("Password valid:", isPasswordValid);
 
     if (!isPasswordValid) {
       return NextResponse.json(
