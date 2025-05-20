@@ -67,7 +67,7 @@ export default function ContactList() {
       </div>
 
       <div className="rounded-md border">
-        <Table>
+        <Table className="calls-table">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>

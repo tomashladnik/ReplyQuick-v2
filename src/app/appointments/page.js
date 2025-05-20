@@ -4,7 +4,7 @@ import { ScheduleModal } from "@/components/appointments/ScheduleModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Link as LinkIcon, Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from 'react';
 import { toast } from "react-hot-toast";
 
@@ -76,22 +76,9 @@ export default function AppointmentsPage() {
       <div className="container mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold">Appointments</h1>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-            <Button 
-              className="flex items-center gap-2 w-full sm:w-auto"
-              onClick={handleScheduleManually}
-            >
-              <Plus className="h-4 w-4" />
-              Schedule Manually
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2 w-full sm:w-auto"
-              onClick={handleShareBookingLink}
-            >
-              <LinkIcon className="h-4 w-4" />
-              Share Booking Link
-            </Button>
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
+            <Button className="w-full sm:w-auto">Upload Contacts</Button>
+            <Button className="w-full sm:w-auto">Call All Contacts</Button>
           </div>
         </div>
 

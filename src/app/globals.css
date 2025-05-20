@@ -120,3 +120,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom responsive styles for /calls page */
+@media (max-width: 640px) {
+  /* Make grid layouts stack vertically */
+  .calls-metrics-grid,
+  .calls-charts-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+  /* Table: make cells wrap and reduce padding */
+  .calls-table th,
+  .calls-table td {
+    padding: 0.5rem !important;
+    font-size: 0.9rem !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+  /* Hide less important columns on mobile */
+  .calls-table th:nth-child(4),
+  .calls-table th:nth-child(5),
+  .calls-table th:nth-child(6),
+  .calls-table td:nth-child(4),
+  .calls-table td:nth-child(5),
+  .calls-table td:nth-child(6) {
+    display: none !important;
+  }
+  /* Card padding */
+  .calls-card .card-content {
+    padding: 1rem !important;
+  }
+  /* Tabs: make triggers scrollable */
+  .calls-tabs-list {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+  }
+}

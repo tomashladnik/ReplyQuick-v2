@@ -179,7 +179,7 @@ export default function ChatPage() {
     <div className="w-full min-h-screen bg-background overflow-x-hidden">
       <main className="flex flex-col md:grid md:grid-cols-12 gap-2 sm:gap-4 md:gap-6 p-2 sm:p-4 md:p-6 w-full">
         {/* Contact List */}
-        <Card className="w-full md:col-span-4 xl:col-span-3 p-2 sm:p-4 border-none shadow-md h-[350px] md:h-full mb-2 md:mb-0">
+        <Card className="w-full md:col-span-4 xl:col-span-3 p-2 sm:p-4 border-none shadow-md h-[350px] md:h-full mb-2 md:mb-0 order-1 md:order-none">
           <div className="flex flex-col h-full">
             {/* Search */}
             <div className="relative mb-4">
@@ -191,7 +191,7 @@ export default function ChatPage() {
             </div>
 
             {/* Contact Scroll List */}
-            <ScrollArea className="flex-1 pr-2 space-y-2">
+            <ScrollArea className="flex-1 pr-2 space-y-2 max-h-[220px] md:max-h-none">
                 {loading ? <p>loading</p> : contacts.map((contact) => (
                   <div
                   key={contact.id}
@@ -252,7 +252,7 @@ export default function ChatPage() {
         </Card>
 
         {/* Chat Box */}
-        <Card className="w-full md:col-span-8 xl:col-span-9 p-2 sm:p-4 border-none shadow-md h-[500px] md:h-full">
+        <Card className="w-full md:col-span-8 xl:col-span-9 p-2 sm:p-4 border-none shadow-md h-[400px] md:h-full order-2 md:order-none flex-1 flex flex-col">
           <div className="flex flex-col h-full">
             {selectedContact ? (
               <>
@@ -305,7 +305,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 px-2 sm:px-4 py-2 messages-container" style={{ minHeight: 0, maxHeight: '40vh' }}>
+                <ScrollArea className="flex-1 px-2 sm:px-4 py-2 messages-container min-h-[120px] max-h-[30vh] sm:max-h-[40vh] md:max-h-none">
                   <div className="space-y-4">
                     {communicationType === "sms" ? (
                       showSmsMessages.length > 0 ? (

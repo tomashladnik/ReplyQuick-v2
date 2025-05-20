@@ -74,6 +74,18 @@ const DISCONNECTION_COLORS = {
   other: CHART_COLORS.muted,
 };
 
+// Responsive hook
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 export default function AICallsPage() {
   const [selectedCall, setSelectedCall] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -224,7 +236,7 @@ export default function AICallsPage() {
           </div>
         </header>
         <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          <TabsList className="flex w-full overflow-x-auto">
+          <TabsList className="flex w-full overflow-x-auto calls-tabs-list">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="upload">Upload</TabsTrigger>
@@ -232,7 +244,7 @@ export default function AICallsPage() {
 
           <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 calls-metrics-grid">
               <MetricCard
                 title="Total Calls"
                 value={stats?.totalCalls || 0}
@@ -260,7 +272,7 @@ export default function AICallsPage() {
             </div>
 
             {/* Charts Grid */}
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 calls-charts-grid">
               {/* Call Status Distribution */}
               <Card>
                 <CardHeader>
@@ -323,11 +335,11 @@ export default function AICallsPage() {
             </div>
 
             {/* Recent Calls Table */}
-            <Card>
+            <Card className="calls-card">
               <CardHeader>
                 <CardTitle>Recent Calls</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="card-content">
                 <div className="overflow-x-auto">
                   <CallTable recentCalls={stats?.recentCalls || []} />
                 </div>
@@ -375,6 +387,7 @@ function MetricCard({ title, value, description, icon }) {
 }
 
 function CallTable({ recentCalls }) {
+  const isMobile = useIsMobile();
   // Format date for table
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -388,8 +401,40 @@ function CallTable({ recentCalls }) {
     });
   };
 
+  if (isMobile) {
+    // Card/list view for mobile
+    return (
+      <div className="flex flex-col gap-3">
+        {recentCalls && recentCalls.length > 0 ? (
+          recentCalls.map((call) => (
+            <div key={call.callSid} className="rounded-lg border p-3 bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-1">
+              <div className="flex items-center gap-2 font-semibold text-base">
+                <Phone className="h-4 w-4 text-primary" />
+                {call.contactName}
+              </div>
+              <div className="text-sm text-muted-foreground break-all">
+                <span className="font-medium">Number:</span> {call.contactPhone}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">Date:</span> {formatDate(call.startTime)}
+              </div>
+              <div className="flex gap-3 mt-1 text-xs">
+                <span><span className="font-medium">Duration:</span> {call.duration ? `${call.duration}s` : "N/A"}</span>
+                <span><span className="font-medium">Status:</span> {call.status.charAt(0).toUpperCase() + call.status.slice(1)}</span>
+                <span><span className="font-medium">Qual:</span> {call.qualification || "Unknown"}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-muted-foreground">No recent calls</div>
+        )}
+      </div>
+    );
+  }
+
+  // Table view for desktop
   return (
-    <Table>
+    <Table className="calls-table">
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
