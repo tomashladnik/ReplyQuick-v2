@@ -1,10 +1,28 @@
 import { PrismaClient } from "@prisma/client";
+import { jwtVerify } from "jose";
+import { NextResponse } from "next/server";
+
 const prisma = new PrismaClient();
-export async function GET() {
-    
+
+export async function GET(req) {
   try {
-    // Fetch all contacts from the database
+    // Get the token from cookies
+    const token = req.cookies.get("auth_token")?.value;
+    
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Verify the token and get userId
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.id;
+
+    // Fetch contacts for the current user
     const contacts = await prisma.contact.findMany({
+      where: {
+        userId: userId
+      },
       select: {
         id: true,
         Name: true,
