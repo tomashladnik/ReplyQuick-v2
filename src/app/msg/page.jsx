@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mail, MessageSquare, Phone, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { FixedSizeList as List } from 'react-window';
 
 export default function ChatPage() {
   const [selectedContact, setSelectedContact] = useState(null);
@@ -175,11 +176,42 @@ export default function ChatPage() {
      scrollToBottom();
    }, [showSmsMessages]);
 
+  // Add this new function to render individual messages
+  const MessageRow = ({ index, style }) => {
+    const messages = communicationType === "sms" ? showSmsMessages :
+                    communicationType === "email" ? emailMessages :
+                    whatsappMessages;
+    const msg = messages[index];
+    
+    if (!msg) return null;
+
+    const isOutbound = msg.direction === "outbound-api" || msg.direction === "outbound";
+    const messageContent = msg.body || msg.content;
+    const messageTime = msg.dateCreated || msg.createdAt;
+
+    return (
+      <div style={style} className={`flex w-full ${isOutbound ? "justify-end" : "justify-start"}`}>
+        <div
+          className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
+            ${isOutbound
+              ? "bg-primary text-primary-foreground rounded-br-none ml-8"
+              : "bg-muted rounded-bl-none mr-8"
+            }`}
+        >
+          <p className="text-sm break-words">{messageContent}</p>
+          <p className="text-xs text-muted-foreground mt-1 text-right">
+            {new Date(messageTime).toLocaleTimeString()}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full min-h-screen bg-background overflow-x-hidden">
       <main className="flex flex-col md:grid md:grid-cols-12 gap-2 sm:gap-4 md:gap-6 p-2 sm:p-4 md:p-6 w-full">
         {/* Contact List */}
-        <Card className="w-full md:col-span-4 xl:col-span-3 p-2 sm:p-4 border-none shadow-md h-[350px] md:h-full mb-2 md:mb-0 order-1 md:order-none">
+           <Card className="w-full md:col-span-4 xl:col-span-3 p-2 sm:p-4 border-none shadow-md h-[350px] md:h-full mb-2 md:mb-0 order-1 md:order-none">
           <div className="flex flex-col h-full">
             {/* Search */}
             <div className="relative mb-4">
@@ -252,7 +284,7 @@ export default function ChatPage() {
         </Card>
 
         {/* Chat Box */}
-        <Card className="w-full md:col-span-8 xl:col-span-9 p-2 sm:p-4 border-none shadow-md h-[400px] md:h-full order-2 md:order-none flex-1 flex flex-col">
+        <Card className="w-full md:col-span-8 xl:col-span-9 p-2 sm:p-4 border-none shadow-md flex flex-col h-[80vh] w-full order-2 md:order-none">
           <div className="flex flex-col h-full">
             {selectedContact ? (
               <>
@@ -304,60 +336,52 @@ export default function ChatPage() {
                   </div>
                 </div>
 
-                {/* Messages */}
-                <ScrollArea className="flex-1 px-2 sm:px-4 py-2 messages-container min-h-[120px] max-h-[30vh] sm:max-h-[40vh] md:max-h-none">
-                  <div className="space-y-4">
+                {/* Messages + Input (scrollable together) */}
+                <div className="flex-1 overflow-hidden flex flex-col px-2 sm:px-4 py-2 messages-container max-h-[40vh] sm:max-h-none">
+                  <div className="flex-1">
                     {communicationType === "sms" ? (
                       showSmsMessages.length > 0 ? (
-                        showSmsMessages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={`flex w-full ${msg.direction === "outbound-api" ? "justify-end" : "justify-start"}`}
-                          >
-                            <div
-                              className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
-                                ${msg.direction === "outbound-api"
-                                  ? "bg-primary text-primary-foreground rounded-br-none ml-8"
-                                  : "bg-muted rounded-bl-none mr-8"
-                                }`}
-                            >
-                              <p className="text-sm break-words">{msg.body}</p>
-                              <p className="text-xs text-muted-foreground mt-1 text-right">
-                                {new Date(msg.dateCreated).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))
+                        <List
+                          height={400}
+                          itemCount={showSmsMessages.length}
+                          itemSize={100}
+                          width="100%"
+                          className="messages-list"
+                        >
+                          {MessageRow}
+                        </List>
                       ) : (
                         <p className="text-muted-foreground text-sm italic text-center">
                           No messages yet. Start the conversation!
                         </p>
                       )
                     ) : communicationType === "whatsapp" ? (
-                      <p className="text-muted-foreground text-sm italic">
-                        WhatsApp messages will appear here.
-                      </p>
+                      whatsappMessages.length > 0 ? (
+                        <List
+                          height={400}
+                          itemCount={whatsappMessages.length}
+                          itemSize={100}
+                          width="100%"
+                          className="messages-list"
+                        >
+                          {MessageRow}
+                        </List>
+                      ) : (
+                        <p className="text-muted-foreground text-sm italic">
+                          WhatsApp messages will appear here.
+                        </p>
+                      )
                     ) : communicationType === "email" ? (
                       emailMessages.length > 0 ? (
-                        emailMessages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={`flex w-full ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
-                          >
-                            <div
-                              className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
-                                ${msg.direction === "outbound"
-                                  ? "bg-primary text-primary-foreground rounded-br-none ml-8"
-                                  : "bg-muted rounded-bl-none mr-8"
-                                }`}
-                            >
-                              <p className="text-sm break-words">{msg.content}</p>
-                              <p className="text-xs text-muted-foreground mt-1 text-right">
-                                {new Date(msg.createdAt).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))
+                        <List
+                          height={400}
+                          itemCount={emailMessages.length}
+                          itemSize={100}
+                          width="100%"
+                          className="messages-list"
+                        >
+                          {MessageRow}
+                        </List>
                       ) : (
                         <p className="text-muted-foreground text-sm italic text-center">
                           No emails yet. Start the conversation!
@@ -369,30 +393,29 @@ export default function ChatPage() {
                       </p>
                     )}
                   </div>
-                </ScrollArea>
-
-                {/* Input Area */}
-                <div className="mt-2 border-t p-2 sm:p-4 bg-muted/30 rounded-b-lg">
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
-                    <Input
-                      placeholder={`Type a ${communicationType} message...`}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      className="h-10 sm:h-11 bg-background border-none focus-visible:ring-1 w-full"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                    />
-                    <Button 
-                      size="lg" 
-                      className="w-full sm:w-auto px-6"
-                      onClick={handleSendMessage}
-                    >
-                      Send
-                    </Button>
+                  {/* Input Area (after all messages) */}
+                  <div className="mt-2 border-t p-2 sm:p-4 bg-muted/30 rounded-b-lg shrink-0">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
+                      <Input
+                        placeholder={`Type a ${communicationType} message...`}
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        className="h-10 sm:h-11 bg-background border-none focus-visible:ring-1 w-full"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                      />
+                      <Button 
+                        size="lg" 
+                        className="w-full sm:w-auto px-6"
+                        onClick={handleSendMessage}
+                      >
+                        Send
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>
