@@ -16,7 +16,7 @@ export const sendOTP = async (phoneNumber, otp) => {
     
     const message = await client.messages.create({
       body: `Your ReplyQuick.AI verification code is: ${otp}. This code will expire in 10 minutes.`,
-      from: '+18559576128', // Your Twilio phone number
+      from: '+19412717374', // Your Twilio phone number
       to: phoneNumber
     });
 
