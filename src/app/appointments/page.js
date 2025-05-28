@@ -77,8 +77,12 @@ export default function AppointmentsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold">Appointments</h1>
           <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
-            <Button className="w-full sm:w-auto">Upload Contacts</Button>
-            <Button className="w-full sm:w-auto">Call All Contacts</Button>
+            <Button 
+              className="w-full sm:w-auto bg-primary" 
+              onClick={handleScheduleManually}
+            >
+              Schedule Meeting
+            </Button>
           </div>
         </div>
 

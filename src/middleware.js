@@ -5,6 +5,11 @@ import { NextResponse } from 'next/server'
 const publicRoutes = ['/login', '/signup', '/verify-otp', '/success', '/api/auth/login', '/api/auth/register', '/api/send-otp','/api/email/webhook','/api/calls/webhook','/api/sms/webhook','/api/whatsapp/webhook']
 
 export async function middleware(request) {
+  // Skip authentication in development mode
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next()
+  }
+
   const { pathname } = request.nextUrl
 
   // Check if the route is public

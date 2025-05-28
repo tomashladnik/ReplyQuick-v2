@@ -40,29 +40,38 @@ export const sendEmail = async (to, subject, html) => {
 
     console.log('Attempting to send email:', {
       to,
-      subject,
-      from: 'QuickReply <noreply@replyquick.ai>'
+      subject
     });
     
-    const data = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-      from: 'QuickReply <noreply@replyquick.ai>',
-      to: [to],
-      subject: subject,
-      html: html,
+    // Send to n8n webhook for email sending
+    const response = await fetch(process.env.N8N_EMAIL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        from: process.env.OUTLOOK_EMAIL || 'noreply@replyquick.ai'
+      })
     });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to send email via n8n');
+    }
 
     console.log('Email sent successfully:', {
       to,
-      messageId: data.id,
-      response: data
+      messageId: data.messageId
     });
-    return { success: true, messageId: data.id };
+    
+    return { success: true, messageId: data.messageId };
   } catch (error) {
     console.error('Error in sendEmail:', {
       error,
       to,
-      errorMessage: error.message,
-      errorCode: error.code
+      errorMessage: error.message
     });
     return { success: false, error: error.message };
   }

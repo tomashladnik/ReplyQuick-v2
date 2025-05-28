@@ -196,7 +196,25 @@ export async function POST(req) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    // Forward to n8n for automation
+    try {
+      await fetch(process.env.N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromEmail,
+          subject,
+          content,
+          contactId: contact.id,
+          messageId
+        })
+      });
+    } catch (error) {
+      console.error('Failed to forward to n8n:', error);
+      // Don't fail the request if n8n forwarding fails
+    }
+
+    return NextResponse.json({ success: true, messageId: message.id });
   } catch (error) {
     console.error('Webhook processing error:', error);
     return NextResponse.json({ error: 'Webhook error' }, { status: 500 });
