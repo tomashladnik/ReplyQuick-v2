@@ -209,7 +209,22 @@ export default function ChatPage() {
      scrollToBottom();
    }, [showSmsMessages]);
 
-  // Add this new function to render individual messages
+  // Add dynamic height calculation for messages
+  const calculateMessageHeight = (msg) => {
+    // Base height for message container
+    const baseHeight = 80;
+    
+    // Estimate height based on content length (roughly 50 chars per line at 16px)
+    const contentLength = (msg.content || msg.body || '').length;
+    const estimatedLines = Math.ceil(contentLength / 50);
+    const contentHeight = Math.max(estimatedLines * 20, 20); // minimum 20px
+    
+    // Add extra height for labels and timestamp
+    const extraHeight = (msg.type === 'ai' || msg.type === 'draft') ? 24 : 0;
+    
+    return baseHeight + contentHeight + extraHeight;
+  };
+
   const MessageRow = ({ index, style }) => {
     const messages = communicationType === "sms" ? showSmsMessages :
                     communicationType === "email" ? emailMessages :
@@ -218,107 +233,186 @@ export default function ChatPage() {
     
     if (!msg) return null;
 
-    // Parse Airtable email content
-    if (communicationType === "email" && msg.content) {
-      const content = msg.content;
-      let aiResponse = '';
-      let personMessage = '';
-
-      // Parse the History field format
-      if (content.includes('Person:') || content.includes('AI:')) {
-        // Split the content by markers
-        const parts = content.split(/(?=Person:|AI:)/).filter(Boolean);
-        
-        parts.forEach(part => {
-          const trimmedPart = part.trim();
-          if (trimmedPart.startsWith('Person:')) {
-            // Extract everything after "Person:" and before "Body:" if it exists
-            let message = trimmedPart.replace('Person:', '').trim();
-            if (message.includes('Body:')) {
-              message = message.split('Body:')[1].trim();
-            }
-            personMessage = message;
-          } else if (trimmedPart.startsWith('AI:')) {
-            aiResponse = trimmedPart.replace('AI:', '').trim();
-          }
-        });
-      } else {
-        // If no markers, treat as a regular message
-        personMessage = content;
-      }
-
-      // Return the formatted message components
+    // For email messages
+    if (communicationType === "email") {
+      const isOutbound = msg.direction === "outbound";
+      const isAI = msg.type === 'ai';
+      const isDraft = msg.type === 'draft';
+      
       return (
-        <div style={style} className="space-y-4">
-          {personMessage && (
-            <div className="flex w-full justify-start items-start">
-              <Avatar className="h-8 w-8 mr-2">
-                <AvatarFallback className="bg-muted text-muted-foreground">
-                  {selectedContact?.Name?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="max-w-[70%] rounded-lg p-3 mb-2 shadow bg-muted rounded-bl-none">
-                <p className="text-sm whitespace-pre-wrap break-words">{personMessage}</p>
-                <p className="text-xs text-muted-foreground mt-1 text-right">
-                  {new Date(msg.createdAt).toLocaleString()}
-                </p>
+        <div style={{
+          ...style,
+          height: 'auto',
+          paddingBottom: '24px'
+        }} className="w-full">
+          {/* Message Header - Timestamp */}
+          <div className="text-center mb-4">
+            <span className="text-xs text-zinc-500 bg-white dark:bg-zinc-900 px-2 py-1 rounded-md">
+              {new Date(msg.createdAt).toLocaleString()}
+            </span>
+          </div>
+
+          {/* Message Content */}
+          <div className={`flex w-full ${isOutbound ? "justify-end" : "justify-start"}`}>
+            {!isOutbound && (
+              <div className="flex-shrink-0 mr-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                      {msg.type === 'person' ? selectedContact?.Name?.[0]?.toUpperCase() || 'U' : 'M'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 mt-1">
+                    {msg.type === 'person' ? selectedContact?.Name?.split(' ')[0] || 'User' : 'Mudit'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className={`relative max-w-[75%] group ${isOutbound ? 'ml-12' : 'mr-12'}`}>
+              {/* AI Response Label */}
+              {isAI && (
+                <div className="absolute -top-6 left-0">
+                  <span className="text-xs font-medium text-zinc-500">
+                    AI Response
+                  </span>
+                </div>
+              )}
+
+              {/* Message Bubble */}
+              <div className={`rounded-2xl px-4 py-3 shadow-sm
+                ${isOutbound
+                  ? isAI 
+                    ? "bg-zinc-900 text-white"
+                    : "bg-blue-600 text-white"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                }
+                ${isOutbound ? "rounded-tr-none" : "rounded-tl-none"}
+              `}>
+                <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                  {msg.content}
+                </div>
+              </div>
+
+              {/* Message Actions - Visible on Hover */}
+              <div className="absolute top-0 right-0 translate-x-full px-2 hidden group-hover:flex items-center gap-1">
+                <button className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-zinc-500">
+                    <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </button>
               </div>
             </div>
-          )}
-          {aiResponse && (
-            <div className="flex w-full justify-end items-start">
-              <div className="max-w-[70%] rounded-lg p-3 mb-2 shadow bg-primary text-primary-foreground rounded-br-none">
-                <div className="text-xs text-primary-foreground/80 mb-1">AI Response</div>
-                <p className="text-sm whitespace-pre-wrap break-words">{aiResponse}</p>
-                <p className="text-xs text-primary-foreground/80 mt-1 text-right">
-                  {new Date(msg.createdAt).toLocaleString()}
-                </p>
+
+            {isOutbound && (
+              <div className="flex-shrink-0 ml-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">
+                      {isAI ? 'AI' : 'R'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 mt-1">
+                    {isAI ? 'AI' : 'ReplyQuick'}
+                  </span>
+                </div>
               </div>
-              <Avatar className="h-8 w-8 ml-2">
-                <AvatarFallback className="bg-primary/20 text-primary">
-                  AI
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       );
     }
 
-    // For non-email messages, use the existing format
+    // For non-email messages (SMS/WhatsApp), use similar structure
     const isOutbound = msg.direction === "outbound-api" || msg.direction === "outbound";
     const isAI = msg.isAI;
     const messageContent = msg.body || msg.content;
     const messageTime = msg.dateCreated || msg.createdAt;
 
     return (
-      <div style={style} className={`flex w-full ${isOutbound ? "justify-end" : "justify-start"}`}>
-        <div
-          className={`max-w-[70%] rounded-lg p-3 mb-2 shadow
-            ${isOutbound
-              ? "bg-primary text-primary-foreground rounded-br-none ml-8"
-              : isAI
-                ? "bg-green-100 rounded-bl-none mr-8"
-                : "bg-muted rounded-bl-none mr-8"
-            }`}
-        >
-          {isAI && (
-            <div className="text-xs text-green-600 mb-1">AI Response</div>
+      <div style={{
+        ...style,
+        height: 'auto',
+        paddingBottom: '24px'
+      }} className="w-full">
+        <div className="text-center mb-4">
+          <span className="text-xs text-zinc-500 bg-white dark:bg-zinc-900 px-2 py-1 rounded-md">
+            {new Date(messageTime).toLocaleString()}
+          </span>
+        </div>
+
+        <div className={`flex w-full ${isOutbound ? "justify-end" : "justify-start"}`}>
+          {!isOutbound && (
+            <div className="flex-shrink-0 mr-4">
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                  <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                    {selectedContact?.Name?.[0]?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <span className="text-[10px] text-zinc-500 mt-1">
+                  {selectedContact?.Name?.split(' ')[0] || 'User'}
+                </span>
+              </div>
+            </div>
           )}
-          <p className="text-sm break-words">{messageContent}</p>
-          <p className="text-xs text-muted-foreground mt-1 text-right">
-            {new Date(messageTime).toLocaleTimeString()}
-          </p>
+
+          <div className={`relative max-w-[75%] group ${isOutbound ? 'ml-12' : 'mr-12'}`}>
+            {isAI && (
+              <div className="absolute -top-6 left-0">
+                <span className="text-xs font-medium text-zinc-500">
+                  AI Response
+                </span>
+              </div>
+            )}
+
+            <div className={`rounded-2xl px-4 py-3 shadow-sm
+              ${isOutbound
+                ? isAI 
+                  ? "bg-zinc-900 text-white"
+                  : "bg-blue-600 text-white"
+                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+              }
+              ${isOutbound ? "rounded-tr-none" : "rounded-tl-none"}
+            `}>
+              <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                {messageContent}
+              </div>
+            </div>
+
+            <div className="absolute top-0 right-0 translate-x-full px-2 hidden group-hover:flex items-center gap-1">
+              <button className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-zinc-500">
+                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {isOutbound && (
+            <div className="flex-shrink-0 ml-4">
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
+                  <span className="text-sm font-medium text-white">
+                    {isAI ? 'AI' : 'R'}
+                  </span>
+                </div>
+                <span className="text-[10px] text-zinc-500 mt-1">
+                  {isAI ? 'AI' : 'ReplyQuick'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-background to-muted/20">
-      <main className="flex flex-col md:grid md:grid-cols-12 gap-4 sm:gap-6 md:gap-8 p-4 sm:p-6 md:p-8 h-full max-w-[1920px] mx-auto w-full">
-        {/* Contact List */}
-        <Card className="w-full md:col-span-4 xl:col-span-3 border-none bg-background/60 shadow-xl backdrop-blur-sm h-full mb-2 md:mb-0 order-1 md:order-none rounded-xl">
+    <div className="h-screen flex flex-col bg-white dark:bg-zinc-950">
+      <main className="flex flex-col md:grid md:grid-cols-12 h-full">
+        {/* Contact List - Left Sidebar */}
+        <div className="w-full md:col-span-3 border-r border-zinc-200 dark:border-zinc-800">
           <div className="flex flex-col h-full p-4">
             {/* Search */}
             <div className="relative mb-6">
@@ -387,161 +481,194 @@ export default function ChatPage() {
               </div>
             </ScrollArea>
           </div>
-        </Card>
+        </div>
 
-        {/* Chat Box */}
-        <Card className="w-full md:col-span-8 xl:col-span-9 border-none bg-background/60 shadow-xl backdrop-blur-sm flex flex-col h-full order-2 md:order-none rounded-xl overflow-hidden">
+        {/* Chat Area */}
+        <div className="w-full md:col-span-9 flex flex-col h-screen bg-zinc-50 dark:bg-zinc-900">
           {selectedContact ? (
             <div className="flex flex-col h-full">
-              {/* Communication Type Selector - Fixed at top */}
-              <div className="flex items-center justify-between gap-4 p-4 bg-muted/30 border-b">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {selectedContact.Name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="font-semibold text-lg leading-none mb-1">{selectedContact.Name}</h2>
-                    <p className="text-sm text-muted-foreground flex items-center">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></span>
-                      {communicationType === "whatsapp" ? "WhatsApp" : 
-                       communicationType === "email" ? "Email" : "SMS"}
-                    </p>
+              {/* Chat Header - Fixed */}
+              <div className="flex-none px-6 py-4 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                      <span className="text-base font-medium text-zinc-600 dark:text-zinc-300">
+                        {selectedContact.Name?.[0]?.toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {selectedContact.Name}
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {selectedContact.email}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={communicationType === "whatsapp" ? "default" : "ghost"}
-                    size="sm"
-                    className="flex items-center gap-2 transition-colors duration-200"
-                    onClick={() => setCommunicationType("whatsapp")}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    WhatsApp
-                  </Button>
-                  <Button
-                    variant={communicationType === "email" ? "default" : "ghost"}
-                    size="sm"
-                    className="flex items-center gap-2 transition-colors duration-200"
-                    onClick={() => setCommunicationType("email")}
-                  >
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </Button>
-                  <Button
-                    variant={communicationType === "sms" ? "default" : "ghost"}
-                    size="sm"
-                    className="flex items-center gap-2 transition-colors duration-200"
-                    onClick={() => setCommunicationType("sms")}
-                  >
-                    <Phone className="h-4 w-4" />
-                    SMS
-                  </Button>
-                </div>
-              </div>
 
-              {/* Messages Container - Scrollable */}
-              <div className="flex-1 min-h-0 flex flex-col">
-                <ScrollArea className="flex-1 px-4 py-6">
-                  <div className="space-y-6">
-                    {communicationType === "sms" ? (
-                      showSmsMessages.length > 0 ? (
-                        <List
-                          height={window.innerHeight * 0.6}
-                          itemCount={showSmsMessages.length}
-                          itemSize={100}
-                          width="100%"
-                          className="messages-list"
-                        >
-                          {MessageRow}
-                        </List>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                          <MessageSquare className="h-12 w-12 mb-4 text-muted-foreground/50" />
-                          <p className="font-medium">No messages yet</p>
-                          <p className="text-sm text-muted-foreground/80">Start the conversation!</p>
-                        </div>
-                      )
-                    ) : communicationType === "whatsapp" ? (
-                      whatsappMessages.length > 0 ? (
-                        <List
-                          height={window.innerHeight * 0.6}
-                          itemCount={whatsappMessages.length}
-                          itemSize={100}
-                          width="100%"
-                          className="messages-list"
-                        >
-                          {MessageRow}
-                        </List>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                          <MessageSquare className="h-12 w-12 mb-4 text-muted-foreground/50" />
-                          <p className="font-medium">No WhatsApp messages</p>
-                          <p className="text-sm text-muted-foreground/80">Messages will appear here</p>
-                        </div>
-                      )
-                    ) : communicationType === "email" ? (
-                      emailMessages.length > 0 ? (
-                        <List
-                          height={window.innerHeight * 0.6}
-                          itemCount={emailMessages.length}
-                          itemSize={100}
-                          width="100%"
-                          className="messages-list"
-                        >
-                          {MessageRow}
-                        </List>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                          <Mail className="h-12 w-12 mb-4 text-muted-foreground/50" />
-                          <p className="font-medium">No emails yet</p>
-                          <p className="text-sm text-muted-foreground/80">Start the conversation!</p>
-                        </div>
-                      )
-                    ) : null}
-                  </div>
-                </ScrollArea>
-
-                {/* Input Area - Fixed at bottom */}
-                <div className="p-4 bg-muted/30 border-t">
-                  <div className="flex items-center gap-3 w-full">
-                    <Input
-                      placeholder={`Type a ${communicationType} message...`}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      className="h-11 bg-background/60 border-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg transition-all duration-200"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                    />
-                    <Button 
-                      size="lg"
-                      className="px-6 shadow-sm transition-all duration-200 hover:shadow-md"
-                      onClick={handleSendMessage}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={communicationType === "whatsapp" ? "default" : "ghost"}
+                      size="sm"
+                      className={`flex items-center gap-2 ${
+                        communicationType === "whatsapp" 
+                          ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+                          : "text-zinc-600 dark:text-zinc-300"
+                      }`}
+                      onClick={() => setCommunicationType("whatsapp")}
                     >
-                      Send
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </Button>
+                    <Button
+                      variant={communicationType === "email" ? "default" : "ghost"}
+                      size="sm"
+                      className={`flex items-center gap-2 ${
+                        communicationType === "email" 
+                          ? "bg-blue-500 text-white hover:bg-blue-600" 
+                          : "text-zinc-600 dark:text-zinc-300"
+                      }`}
+                      onClick={() => setCommunicationType("email")}
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span className="hidden sm:inline">Email</span>
+                    </Button>
+                    <Button
+                      variant={communicationType === "sms" ? "default" : "ghost"}
+                      size="sm"
+                      className={`flex items-center gap-2 ${
+                        communicationType === "sms" 
+                          ? "bg-violet-500 text-white hover:bg-violet-600" 
+                          : "text-zinc-600 dark:text-zinc-300"
+                      }`}
+                      onClick={() => setCommunicationType("sms")}
+                    >
+                      <Phone className="h-4 w-4" />
+                      <span className="hidden sm:inline">SMS</span>
                     </Button>
                   </div>
                 </div>
               </div>
+
+              {/* Messages Container - Scrollable */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex flex-col p-4 space-y-4">
+                  {communicationType === "email" && emailMessages.length > 0 ? (
+                    emailMessages.map((msg, index) => {
+                      const isOutbound = msg.direction === "outbound";
+                      const isAI = msg.type === 'ai';
+                      const showTimestamp = index === 0 || 
+                        new Date(msg.createdAt).toDateString() !== new Date(emailMessages[index - 1].createdAt).toDateString();
+
+                      return (
+                        <div key={msg.id} className="space-y-2">
+                          {showTimestamp && (
+                            <div className="flex justify-center my-4">
+                              <span className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full">
+                                {new Date(msg.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className={`flex items-end gap-2 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                            {!isOutbound && (
+                              <div className="flex-shrink-0 mb-1">
+                                <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                    {msg.type === 'person' ? selectedContact?.Name?.[0]?.toUpperCase() : 'M'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className={`group relative max-w-[75%] ${isOutbound ? 'ml-4' : 'mr-4'}`}>
+                              {isAI && (
+                                <div className="absolute -top-5 left-0">
+                                  <span className="text-xs font-medium text-zinc-500">AI Response</span>
+                                </div>
+                              )}
+
+                              <div className={`px-3 py-2 rounded-2xl text-[15px] leading-relaxed
+                                ${isOutbound
+                                  ? isAI 
+                                    ? "bg-zinc-900 text-white"
+                                    : "bg-blue-600 text-white"
+                                  : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                                }
+                                ${isOutbound ? "rounded-tr-sm" : "rounded-tl-sm"}
+                              `}>
+                                <div className="whitespace-pre-wrap break-words">
+                                  {msg.content}
+                                </div>
+                                <div className="text-[11px] opacity-70 text-right mt-1">
+                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {isOutbound && (
+                              <div className="flex-shrink-0 mb-1">
+                                <div className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-white">
+                                    {isAI ? 'AI' : 'R'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+                      <Mail className="h-12 w-12 text-zinc-400" />
+                      <p className="mt-4 font-medium text-zinc-600 dark:text-zinc-300">No messages yet</p>
+                      <p className="text-sm text-zinc-500">Start a conversation</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Input Area - Fixed */}
+              <div className="flex-none p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <Input
+                    placeholder={`Type a ${communicationType} message...`}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="h-11 bg-zinc-50 dark:bg-zinc-900 border-none focus-visible:ring-1 focus-visible:ring-zinc-200 dark:focus-visible:ring-zinc-800 rounded-xl"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    className="h-11 w-11 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 rounded-xl"
+                    onClick={handleSendMessage}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <path d="M18.3333 1.66667L9.16667 10.8333M18.3333 1.66667L12.5 18.3333L9.16667 10.8333M18.3333 1.66667L1.66667 7.5L9.16667 10.8333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-              <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
-                <MessageSquare className="w-10 h-10 text-muted-foreground/50" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Select a Contact</h3>
-              <p className="text-center text-muted-foreground/80">
+            <div className="flex flex-col items-center justify-center h-full">
+              <MessageSquare className="h-12 w-12 text-zinc-400" />
+              <h3 className="mt-4 text-xl font-semibold text-zinc-900 dark:text-zinc-100">Select a Contact</h3>
+              <p className="mt-2 text-zinc-500">
                 Choose a contact from the list to start messaging
               </p>
             </div>
           )}
-        </Card>
+        </div>
       </main>
     </div>
   );

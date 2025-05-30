@@ -52,42 +52,64 @@ export async function GET(req) {
       })
       .all();
 
-    const messages = records.map(record => {
+    const messages = [];
+    
+    records.forEach(record => {
       const fields = record.fields;
       const history = fields.History || '';
-      let content = '';
       
-      if (history.includes('Person:') || history.includes('AI:')) {
-        // Split the content by markers and clean each part
-        const parts = history.split(/(?=Person:|AI:)/).filter(Boolean);
-        const cleanedParts = parts.map(part => {
-          const trimmedPart = part.trim();
-          if (trimmedPart.startsWith('Person:')) {
-            let message = trimmedPart.replace('Person:', '').trim();
-            if (message.includes('Body:')) {
-              message = message.split('Body:')[1].trim();
-            }
-            return 'Person:' + cleanEmailContent(message);
-          } else if (trimmedPart.startsWith('AI:')) {
-            return 'AI:' + trimmedPart.replace('AI:', '').trim();
+      // Split the conversation into parts
+      const parts = history.split(/(?=Person:|AI:)/).filter(Boolean);
+      
+      parts.forEach(part => {
+        const trimmedPart = part.trim();
+        if (trimmedPart.startsWith('Person:')) {
+          let message = trimmedPart.replace('Person:', '').trim();
+          if (message.includes('Body:')) {
+            message = message.split('Body:')[1].trim();
           }
-          return trimmedPart;
-        });
-        content = cleanedParts.join('\n');
-      } else {
-        content = cleanEmailContent(fields['Draft Email'] || history || '');
-      }
+          messages.push({
+            id: record.id + '_person',
+            content: cleanEmailContent(message),
+            subject: fields.Subject || '',
+            isAirtable: true,
+            direction: 'inbound',
+            createdAt: fields['Last Updated'] || record._rawJson.createdTime,
+            status: fields.Status || 'pending',
+            type: 'person'
+          });
+        } else if (trimmedPart.startsWith('AI:')) {
+          const aiMessage = trimmedPart.replace('AI:', '').trim();
+          messages.push({
+            id: record.id + '_ai',
+            content: aiMessage,
+            subject: fields.Subject || '',
+            isAirtable: true,
+            direction: 'outbound',
+            createdAt: fields['Last Updated'] || record._rawJson.createdTime,
+            status: fields.Status || 'pending',
+            type: 'ai'
+          });
+        }
+      });
 
-      return {
-        id: record.id,
-        content,
-        subject: fields.Subject || '',
-        isAirtable: true,
-        direction: 'inbound',
-        createdAt: fields['Last Updated'] || record._rawJson.createdTime,
-        status: fields.Status || 'pending'
-      };
+      // If there's a draft email, add it as a separate message
+      if (fields['Draft Email']) {
+        messages.push({
+          id: record.id + '_draft',
+          content: cleanEmailContent(fields['Draft Email']),
+          subject: fields.Subject || '',
+          isAirtable: true,
+          direction: 'outbound',
+          createdAt: fields['Last Updated'] || record._rawJson.createdTime,
+          status: fields.Status || 'pending',
+          type: 'draft'
+        });
+      }
     });
+
+    // Sort messages by createdAt timestamp
+    messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     return NextResponse.json({ messages });
   } catch (error) {
