@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { fetchEmailRequests, updateEmailStatus, watchEmailChanges } from '@/lib/airtable';
 import { sendEmail } from '@/lib/email';
