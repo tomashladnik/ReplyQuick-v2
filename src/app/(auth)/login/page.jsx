@@ -51,13 +51,7 @@ export default function LoginPage() {
       <div className="bg-[#242328] text-white p-6 md:p-8 md:w-1/3 flex flex-col relative">
         <div className="mb-12 md:mb-16">
           <div className="inline-flex items-center px-3 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition-shadow">
-            <Image
-              src="/logo.svg"
-              alt="ReplyQuick.AI Logo"
-              width={24}
-              height={24}
-              className="mr-2"
-            />
+           
             <span className="text-[#242328] font-bold">ReplyQuick.AI</span>
           </div>
         </div>
