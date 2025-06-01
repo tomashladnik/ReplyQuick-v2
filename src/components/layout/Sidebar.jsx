@@ -41,7 +41,7 @@ export function Sidebar({ isOpen, onClose }) {
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <Phone className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-semibold">CallAI</span>
+            <span className="text-lg font-semibold">ReplyQuickAI</span>
           </div>
           <Button
             variant="ghost"
