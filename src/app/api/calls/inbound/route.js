@@ -60,4 +60,47 @@ export async function POST(req) {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  try {
+    // Get all inbound calls with contact details
+    const inboundCalls = await prisma.call.findMany({
+      where: {
+        direction: "inbound"
+      },
+      include: {
+        contact: true
+      },
+      orderBy: {
+        startTime: 'desc'
+      }
+    });
+
+    // Format the response
+    const formattedCalls = inboundCalls.map(call => ({
+      id: call.id,
+      sessionId: call.sessionId,
+      contactName: call.contact?.Name || 'Unknown Caller',
+      phoneNumber: call.contact?.phone || 'No Phone',
+      startTime: call.startTime,
+      duration: call.duration,
+      status: call.status,
+      transcriptText: call.transcriptText,
+      summary: call.summary,
+      userSentiment: call.userSentiment,
+      recordingUrl: call.recordingUrl,
+      publicLogUrl: call.publicLogUrl,
+      qualification: call.qualification,
+      isNewContact: call.contact?.source === "inbound_call" && call.contact?.status === "new"
+    }));
+
+    return NextResponse.json({ calls: formattedCalls });
+  } catch (error) {
+    console.error("Error fetching inbound calls:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch inbound calls" },
+      { status: 500 }
+    );
+  }
 } 
