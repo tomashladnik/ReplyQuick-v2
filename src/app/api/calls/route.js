@@ -11,7 +11,30 @@ const initiateCall = async (contact, callMetadataBase) => {
     // Format the phone number
     const toNumber = contact.phone.startsWith("+") ? contact.phone : `+${contact.phone}`;
 
-    // Initiate call using Retell AI API first to get the session ID
+    // Create call record first
+    const callRecord = await prisma.call.create({
+      data: {
+        contactId: contact.id,
+        userId: callMetadataBase.userId,
+        direction: "outbound",
+        status: "scheduled",
+        startTime: new Date(),
+        sentAt: new Date(),
+        endTime: null,
+        duration: null,
+        recordingUrl: null,
+        publicLogUrl: null,
+        disconnectionReason: null,
+        cost: null,
+        transcriptText: null,
+        summary: null,
+        qualification: null,
+        userSentiment: null,
+        callSid: `call_${Math.random().toString(36).substring(2)}${Date.now()}`
+      },
+    });
+
+    // Initiate call using Retell AI API
     const retellResponse = await axios.post(
       "https://api.retellai.com/v2/create-phone-call",
       {
@@ -20,6 +43,7 @@ const initiateCall = async (contact, callMetadataBase) => {
         override_agent_id: process.env.RETELL_AGENT_ID,
         metadata: {
           ...callMetadataBase,
+          callId: callRecord.id,
           contactInfo: {
             name: contact.Name,
             phone: contact.phone,
@@ -37,22 +61,20 @@ const initiateCall = async (contact, callMetadataBase) => {
       }
     );
 
-    // Create call record with the session ID from Retell
-    const callRecord = await prisma.call.create({
-      data: {
-        contactId: contact.id,
-        userId: callMetadataBase.userId,
-        direction: "outbound",
-        status: "scheduled",
-        startTime: new Date(),
-        sessionId: retellResponse.data.session_id, // Use the session ID from Retell
-        callSid: retellResponse.data.call_id // Store the call ID as well
-      },
-    });
+    // Update call record with Retell session ID if available
+    if (retellResponse.data.session_id) {
+      await prisma.call.update({
+        where: { id: callRecord.id },
+        data: {
+          sessionId: retellResponse.data.session_id,
+          callSid: retellResponse.data.call_id || callRecord.callSid
+        }
+      });
+    }
 
     return { 
       success: true, 
-      callId: callRecord.id, 
+      callId: callRecord.id,
       retellCallId: retellResponse.data.call_id,
       sessionId: retellResponse.data.session_id
     };

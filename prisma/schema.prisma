@@ -1,4 +1,4 @@
-generator client {
+generator client {More actions
   provider = "prisma-client-js"
 }
 
@@ -27,40 +27,37 @@ model User {
 }
 
 model Call {
-  id              String    @id @default(cuid())
-  userId          String    // ID of the user who initiated the call
-  contactId       String    // ID of the contact being called
-  sessionId       String    @unique // Retell session ID
-  startTime       DateTime  @default(now())
-  endedAt         DateTime?
-  duration        Int?      // Duration in seconds
-  status          String    @default("pending") // pending, in-progress, completed, failed
-  direction       String    @default("outbound")
-  channelType     String?   // phone_call, web_call, etc.
-  cost            Float?    // Call cost from Retell
-  transcriptText  String?   @db.Text // Full call transcript
-  summary         String?   @db.Text // AI-generated summary
-  userSentiment   String?   // Positive, Negative, Neutral, Unknown
-  qualification   String?   // Lead qualification status
-  recordingUrl    String?   // URL to call recording
-  publicLogUrl    String?   // URL to public call log
-  disconnectionReason String? // Why the call ended (user hangup, dial busy, error, etc)
-  
-  // Relationships
-  user           User     @relation(fields: [userId], references: [id])
-  contact        Contact  @relation(fields: [contactId], references: [id])
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  userId             String?   // Optional now
+  contactId          String
+  direction          String    // "inbound" or "outbound"
+  status            String    // "scheduled", "in-progress", "completed", "failed"
+  sentAt            DateTime? // Add this for when the call was sent/queued
+  startTime         DateTime
+  endTime           DateTime?
+  duration          Int?      // in seconds
+  recordingUrl      String?
+  publicLogUrl      String?   // Add for public log URL
+  disconnectionReason String? // Add for disconnection reason
+  cost             Float?    // Add for call cost
+  transcriptText   String?   
+  summary          String?   
+  qualification    String?   // "qualified", "not_qualified"
+  userSentiment    String?   // "Positive", "Negative", "Neutral", "Unknown"
+  callSid          String?   @unique
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull) // Make user optional
+  contact Contact @relation(fields: [contactId], references: [id])
 
   @@index([userId])
   @@index([contactId])
-  @@index([sessionId])
+  @@map("calls")
 }
 
 model Contact {
   id        String   @id @default(uuid())
   userId    String?  // Optional now
+  fullName  String
   Name  String
   email     String?  @unique
   phone     String

@@ -41,9 +41,20 @@ export async function POST(req) {
         contactId: contact.id,
         userId: contact.userId || null, // If contact has an assigned user
         direction: "inbound",
-        channelType: channel_type,
+        status: "in-progress",
         startTime: new Date(timestamp),
-        status: "in-progress"
+        sentAt: new Date(timestamp),
+        endTime: null,
+        duration: null,
+        recordingUrl: null,
+        publicLogUrl: null,
+        disconnectionReason: null,
+        cost: null,
+        transcriptText: null,
+        summary: null,
+        qualification: null,
+        userSentiment: null,
+        callSid: null // Will be updated when webhook receives it
       }
     });
 

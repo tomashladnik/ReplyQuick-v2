@@ -51,7 +51,6 @@ async function createCallRecord(contactId, webhookData) {
     session_id,
     call_id,
     timestamp,
-    channel_type = "phone_call",
     direction = "inbound"
   } = webhookData;
 
@@ -63,7 +62,17 @@ async function createCallRecord(contactId, webhookData) {
       direction,
       status: "in-progress",
       startTime: new Date(timestamp),
-      channelType: channel_type,
+      sentAt: new Date(timestamp),
+      endTime: null,
+      duration: null,
+      recordingUrl: null,
+      publicLogUrl: null,
+      disconnectionReason: null,
+      cost: null,
+      transcriptText: null,
+      summary: null,
+      qualification: null,
+      userSentiment: null,
       userId: null // Will be updated later if assigned to a user
     }
   });
@@ -72,29 +81,32 @@ async function createCallRecord(contactId, webhookData) {
 export async function POST(req) {
   try {
     const webhookData = await req.json();
+    console.log("Webhook event received:", webhookData);
     
     // Extract all relevant information from webhook
     const {
-      session_id,
       call_id,
       from_number,
       to_number,
       direction,
-      event_type,
-      transcript_text,
-      summary,
-      user_sentiment,
-      recording_url,
+      call_status,
+      start_timestamp,
+      end_timestamp,
+      duration_ms,
+      transcript,
       public_log_url,
-      qualification,
-      duration,
-      status
+      disconnection_reason,
+      call_cost,
+      call_analysis,
+      metadata,
+      telephony_identifier
     } = webhookData;
 
-    // Try to find existing contact
+    // Try to find existing contact by phone number (use to_number for outbound calls)
+    const contactPhone = direction === "outbound" ? to_number : from_number;
     let contact = await prisma.contact.findFirst({
       where: {
-        phone: from_number
+        phone: contactPhone || metadata?.contactInfo?.phone
       }
     });
 
@@ -102,46 +114,78 @@ export async function POST(req) {
     if (!contact) {
       contact = await prisma.contact.create({
         data: {
-          Name: `Lead from ${from_number}`,
-          phone: from_number,
-          source: "inbound_call",
+          Name: metadata?.contactInfo?.name || `Lead from ${contactPhone}`,
+          phone: contactPhone || metadata?.contactInfo?.phone,
+          email: metadata?.contactInfo?.email,
+          source: direction === "inbound" ? "inbound_call" : "outbound_call",
           status: "new",
-          category: "Inbound Lead"
+          category: metadata?.contactInfo?.category || "General",
+          userId: metadata?.userId // Associate with user if available
         }
       });
     }
 
-    // Find existing call or create/update it
-    let call = await prisma.call.upsert({
+    // Try to find existing call by callSid first
+    let call = await prisma.call.findFirst({
       where: {
-        sessionId: session_id
-      },
-      create: {
-        sessionId: session_id,
-        callSid: call_id,
-        contactId: contact.id,
-        direction,
-        status: status || "in-progress",
-        startTime: new Date(),
-        transcriptText: transcript_text,
-        summary,
-        userSentiment: user_sentiment,
-        recordingUrl: recording_url,
-        publicLogUrl: public_log_url,
-        qualification,
-        duration: duration || 0
-      },
-      update: {
-        status: status,
-        transcriptText: transcript_text,
-        summary,
-        userSentiment: user_sentiment,
-        recordingUrl: recording_url,
-        publicLogUrl: public_log_url,
-        qualification,
-        duration,
-        endTime: status === "completed" ? new Date() : undefined
+        callSid: call_id
       }
+    });
+
+    // If call exists, update it
+    if (call) {
+      call = await prisma.call.update({
+        where: {
+          id: call.id
+        },
+        data: {
+          callSid: call_id,
+          status: call_status || "completed",
+          startTime: new Date(start_timestamp),
+          endTime: end_timestamp ? new Date(end_timestamp) : undefined,
+          transcriptText: transcript || null,
+          summary: call_analysis?.call_summary || null,
+          userSentiment: call_analysis?.user_sentiment || "Unknown",
+          qualification: call_analysis?.call_successful ? "qualified" : "not_qualified",
+          recordingUrl: null, // Will be updated when recording is ready
+          publicLogUrl: public_log_url,
+          disconnectionReason: disconnection_reason,
+          duration: Math.floor(duration_ms / 1000) || 0,
+          cost: call_cost?.combined_cost || 0,
+          userId: metadata?.userId || call.userId
+        }
+      });
+    } else {
+      // Create new call record if not found
+      call = await prisma.call.create({
+        data: {
+          callSid: call_id,
+          contactId: contact.id,
+          userId: metadata?.userId,
+          direction: direction || "inbound",
+          status: call_status || "in-progress",
+          startTime: new Date(start_timestamp),
+          endTime: end_timestamp ? new Date(end_timestamp) : undefined,
+          sentAt: new Date(start_timestamp),
+          transcriptText: transcript || null,
+          summary: call_analysis?.call_summary || null,
+          userSentiment: call_analysis?.user_sentiment || "Unknown",
+          qualification: call_analysis?.call_successful ? "qualified" : "not_qualified",
+          publicLogUrl: public_log_url,
+          disconnectionReason: disconnection_reason,
+          duration: Math.floor(duration_ms / 1000) || 0,
+          cost: call_cost?.combined_cost || 0
+        }
+      });
+    }
+
+    // Log the webhook processing
+    logWebhookEvent('call_analyzed', {
+      callId: call.id,
+      status: call_status,
+      disconnectionReason: disconnection_reason,
+      duration: duration_ms,
+      callCost: call_cost?.combined_cost
     });
 
     return NextResponse.json({
