@@ -8,41 +8,26 @@ const prisma = new PrismaClient();
 // Helper function to initiate a call for a single contact
 const initiateCall = async (contact, callMetadataBase) => {
   try {
-    // Create call record
-    const callRecord = await prisma.call.create({
-      data: {
-        contactId: contact.id,
-        userId: callMetadataBase.userId, // Ensure userId is associated with the call
-        direction: "outbound",
-        status: "scheduled",
-        startTime: new Date(),
-      },
-    });
-
-    // Prepare metadata for Retell AI
-    const callMetadata = {
-      ...callMetadataBase,
-      callId: callRecord.id,
-      contactInfo: {
-        name: contact.Name,
-        phone: contact.phone,
-        email: contact.email,
-        category: contact.category,
-      },
-      qualificationCriteria: contact.category ? `Interested in ${contact.category}` : "General inquiry",
-    };
-
     // Format the phone number
     const toNumber = contact.phone.startsWith("+") ? contact.phone : `+${contact.phone}`;
 
-    // Initiate call using Retell AI API
+    // Initiate call using Retell AI API first to get the session ID
     const retellResponse = await axios.post(
       "https://api.retellai.com/v2/create-phone-call",
       {
         from_number: process.env.TWILIO_PHONE_NUMBER1,
         to_number: toNumber,
         override_agent_id: process.env.RETELL_AGENT_ID,
-        metadata: callMetadata,
+        metadata: {
+          ...callMetadataBase,
+          contactInfo: {
+            name: contact.Name,
+            phone: contact.phone,
+            email: contact.email,
+            category: contact.category,
+          },
+          qualificationCriteria: contact.category ? `Interested in ${contact.category}` : "General inquiry",
+        }
       },
       {
         headers: {
@@ -52,16 +37,25 @@ const initiateCall = async (contact, callMetadataBase) => {
       }
     );
 
-    // Update call record with Retell call ID
-    await prisma.call.update({
-      where: { id: callRecord.id },
+    // Create call record with the session ID from Retell
+    const callRecord = await prisma.call.create({
       data: {
-        callSid: retellResponse.data.call_id,
-        status: "initiated",
+        contactId: contact.id,
+        userId: callMetadataBase.userId,
+        direction: "outbound",
+        status: "scheduled",
+        startTime: new Date(),
+        sessionId: retellResponse.data.session_id, // Use the session ID from Retell
+        callSid: retellResponse.data.call_id // Store the call ID as well
       },
     });
 
-    return { success: true, callId: callRecord.id, retellCallId: retellResponse.data.call_id };
+    return { 
+      success: true, 
+      callId: callRecord.id, 
+      retellCallId: retellResponse.data.call_id,
+      sessionId: retellResponse.data.session_id
+    };
   } catch (error) {
     console.error(`Failed to initiate call for contact ${contact.id}:`, error.response?.data || error.message);
     return { success: false, error: error.message };
@@ -118,6 +112,7 @@ export async function POST(req) {
         success: true,
         callId: result.callId,
         retellCallId: result.retellCallId,
+        sessionId: result.sessionId
       });
     } else {
       // Case 2: Initiate calls for all contacts of the user
