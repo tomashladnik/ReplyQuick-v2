@@ -65,15 +65,7 @@ export async function GET(req) {
         duration: true
       }
     });
-    const averageDuration = Math.round(durationResult._avg.duration || 0);
-
-    // Get active campaigns count (you may need to adjust this based on your campaign model)
-    const activeCampaigns = await prisma.campaign.count({
-      where: {
-        userId: userId,
-        status: "active"
-      }
-    });
+    const averageDuration = Math.round(durationResult._avg?.duration || 0);
 
     // Get recent calls
     const recentCalls = await prisma.call.findMany({
@@ -84,23 +76,11 @@ export async function GET(req) {
         startTime: "desc"
       },
       take: 5,
-      select: {
-        id: true,
-        sessionId: true,
-        status: true,
-        startTime: true,
-        duration: true,
-        direction: true,
-        qualification: true,
-        recordingUrl: true,
-        publicLogUrl: true,
-        disconnectionReason: true,
-        cost: true,
-        transcriptText: true,
+      include: {
         contact: {
           select: {
-            phone: true,
-            Name: true
+            Name: true,
+            phone: true
           }
         }
       }
@@ -110,8 +90,8 @@ export async function GET(req) {
     const formattedRecentCalls = recentCalls.map(call => ({
       id: call.id,
       sessionId: call.sessionId,
-      contactName: call.contact.Name,
-      contactPhone: call.contact.phone,
+      contactName: call.contact?.Name || 'Unknown',
+      contactPhone: call.contact?.phone || 'No Phone',
       status: call.status,
       startTime: call.startTime,
       duration: call.duration,
@@ -124,11 +104,25 @@ export async function GET(req) {
       transcriptText: call.transcriptText
     }));
 
+    // Get status distribution
+    const statusCounts = await prisma.call.groupBy({
+      by: ['status'],
+      where: {
+        userId: userId
+      },
+      _count: true
+    });
+
+    const statusDistribution = statusCounts.map(status => ({
+      name: status.status,
+      value: status._count
+    }));
+
     return NextResponse.json({
       totalCalls,
       successRate,
       averageDuration,
-      activeCampaigns,
+      statusDistribution,
       recentCalls: formattedRecentCalls
     });
 

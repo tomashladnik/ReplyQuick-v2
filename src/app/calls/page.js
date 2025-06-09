@@ -195,7 +195,7 @@ export default function AICallsPage() {
   };
 
   const getCallStatusData = () => {
-    if (!stats || !stats.statusDistribution) {
+    if (!stats?.statusDistribution) {
       return [
         { name: "Scheduled", value: 0 },
         { name: "In-Progress", value: 0 },
@@ -244,7 +244,7 @@ export default function AICallsPage() {
 
           <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 calls-metrics-grid">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4 calls-metrics-grid">
               <MetricCard
                 title="Total Calls"
                 value={stats?.totalCalls || 0}
@@ -262,12 +262,6 @@ export default function AICallsPage() {
                 value={formatTime(stats?.averageDuration || 0)}
                 description="Average call duration"
                 icon={<Clock className="h-4 w-4" />}
-              />
-              <MetricCard
-                title="Active Campaigns"
-                value={stats?.activeCampaigns || 0}
-                description="Running campaigns"
-                icon={<BarChart2 className="h-4 w-4" />}
               />
             </div>
 
