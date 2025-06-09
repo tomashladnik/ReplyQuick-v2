@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import Airtable from 'airtable';
 import { base } from "@/lib/airtable";
+import { jwtVerify } from "jose";
 
 const prisma = new PrismaClient();
 
@@ -12,8 +13,23 @@ console.log("process.env.NEXT_AIRTABLE_BASE_ID", process.env.NEXT_AIRTABLE_BASE_
 
 export async function GET(req) {
   try {
-    // First try to get contacts from Prisma database
+    // Get the token from cookies
+    const token = req.cookies.get("auth_token")?.value;
+    
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Verify the token and get userId
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.id;
+
+    // First try to get contacts from Prisma database for the specific user
     const dbContacts = await prisma.contact.findMany({
+      where: {
+        userId: userId
+      },
       select: {
         id: true,
         Name: true,

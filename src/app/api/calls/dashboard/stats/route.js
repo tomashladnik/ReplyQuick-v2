@@ -21,88 +21,72 @@ const getUserIdFromToken = async (req) => {
 
 export async function GET(req) {
   try {
-    // Get user ID (if required)
-    const userId = getUserIdFromToken(req);
-
-    // Fetch aggregated call statistics (conditionally using userId)
-    // const whereClause = userId ? { userId } : {}; // Apply filter only if userId exists
-    // console.log("whereClause", whereClause);
-    const totalCalls = await prisma.call.count();
-   
-    const completedCalls = await prisma.call.count({
-      where: {  status: "completed" },
-    });
-    const successRate = totalCalls > 0 ? ((completedCalls / totalCalls) * 100).toFixed(2) : 0;
-
-    // Fetch average call duration
-    const avgDurationResult = await prisma.call.aggregate({
-      _avg: { duration: true },
-      where: {  duration: { not: null } },
-    });
-    const avgDuration = avgDurationResult._avg.duration || 0;
-
-    // Fetch daily call trends for the last 7 days
-    const today = new Date();
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-
-    const dailyTrends = [];
-
-    for (let i = 0; i < 7; i++) {
-      const dayStart = new Date(sevenDaysAgo);
-      dayStart.setDate(sevenDaysAgo.getDate() + i);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayStart.getDate() + 1);
-
-      const dateStr = dayStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-      const totalCallsForDay = await prisma.call.count({
-        where: {  startTime: { gte: dayStart, lt: dayEnd } },
-      });
-
-      const completedCallsForDay = await prisma.call.count({
-        where: {  startTime: { gte: dayStart, lt: dayEnd }, status: "completed" },
-      });
-
-      const failedCallsForDay = await prisma.call.count({
-        where: {  startTime: { gte: dayStart, lt: dayEnd }, status: "failed" },
-      });
-
-      const avgDurationForDayData = await prisma.call.aggregate({
-        _avg: { duration: true },
-        where: {  startTime: { gte: dayStart, lt: dayEnd }, duration: { not: null } },
-      });
-      const avgDurationForDay = avgDurationForDayData._avg.duration || 0;
-
-      dailyTrends.push({
-        date: dateStr,
-        totalCalls: totalCallsForDay,
-        completed: completedCallsForDay,
-        failed: failedCallsForDay,
-        avgDuration: avgDurationForDay,
-      });
+    // Get the token from cookies
+    const token = req.cookies.get("auth_token")?.value;
+    
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Fetch call status distribution
-    const statusCounts = await prisma.call.groupBy({
-      by: ["status"],
-      // where: whereClause,
-      _count: { status: true },
+    // Verify the token and get userId
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.id;
+
+    // Get total calls
+    const totalCalls = await prisma.call.count({
+      where: {
+        userId: userId
+      }
     });
 
-    const statusDistribution = statusCounts.map((item) => ({
-      name: item.status.charAt(0).toUpperCase() + item.status.slice(1),
-      value: item._count.status,
-    }));
+    // Get completed calls for success rate
+    const completedCalls = await prisma.call.count({
+      where: {
+        userId: userId,
+        status: "completed"
+      }
+    });
 
-    // Fetch recent calls (limited to 5 for dashboard)
+    // Calculate success rate
+    const successRate = totalCalls > 0 
+      ? Math.round((completedCalls / totalCalls) * 100) 
+      : 0;
+
+    // Get average duration
+    const durationResult = await prisma.call.aggregate({
+      where: {
+        userId: userId,
+        duration: {
+          not: null
+        }
+      },
+      _avg: {
+        duration: true
+      }
+    });
+    const averageDuration = Math.round(durationResult._avg.duration || 0);
+
+    // Get active campaigns count (you may need to adjust this based on your campaign model)
+    const activeCampaigns = await prisma.campaign.count({
+      where: {
+        userId: userId,
+        status: "active"
+      }
+    });
+
+    // Get recent calls
     const recentCalls = await prisma.call.findMany({
-      // where: whereClause,
-      orderBy: { startTime: "desc" },
+      where: {
+        userId: userId
+      },
+      orderBy: {
+        startTime: "desc"
+      },
       take: 5,
       select: {
-        callSid: true,
+        id: true,
+        sessionId: true,
         status: true,
         startTime: true,
         duration: true,
@@ -114,14 +98,20 @@ export async function GET(req) {
         cost: true,
         transcriptText: true,
         contact: {
-          select: { phone: true, Name: true },
-        },
-      },
+          select: {
+            phone: true,
+            Name: true
+          }
+        }
+      }
     });
 
     // Format recent calls
-    const formattedRecentCalls = recentCalls.map((call) => ({
-      callSid: call.callSid,
+    const formattedRecentCalls = recentCalls.map(call => ({
+      id: call.id,
+      sessionId: call.sessionId,
+      contactName: call.contact.Name,
+      contactPhone: call.contact.phone,
       status: call.status,
       startTime: call.startTime,
       duration: call.duration,
@@ -131,23 +121,22 @@ export async function GET(req) {
       publicLogUrl: call.publicLogUrl,
       disconnectionReason: call.disconnectionReason,
       cost: call.cost,
-      transcriptText: call.transcriptText,
-      contactPhone: call.contact?.phone || "Unknown",
-      contactName: call.contact?.Name || "Unknown",
+      transcriptText: call.transcriptText
     }));
-
-  
 
     return NextResponse.json({
       totalCalls,
       successRate,
-      avgDuration,
-      callTrends: dailyTrends,
-      statusDistribution,
-      recentCalls: formattedRecentCalls,
+      averageDuration,
+      activeCampaigns,
+      recentCalls: formattedRecentCalls
     });
+
   } catch (error) {
-    console.error("Dashboard stats error:", error.message, error.stack);
-    return NextResponse.json({ error: "Failed to fetch dashboard stats" }, { status: 500 });
+    console.error("Dashboard stats error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch dashboard stats" },
+      { status: 500 }
+    );
   }
 }

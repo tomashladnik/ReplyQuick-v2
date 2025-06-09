@@ -12,6 +12,7 @@ const initiateCall = async (contact, callMetadataBase) => {
     const callRecord = await prisma.call.create({
       data: {
         contactId: contact.id,
+        userId: callMetadataBase.userId, // Ensure userId is associated with the call
         direction: "outbound",
         status: "scheduled",
         startTime: new Date(),
@@ -71,20 +72,17 @@ export async function POST(req) {
   try {
     console.log("Starting call initiation");
 
-    // Get token from cookies (Optional authentication)
+    // Get token from cookies (Required authentication)
     const token = req.cookies.get("auth_token")?.value;
-    let userId = null;
-
-    if (token) {
-      try {
-        // Verify the token and get userId
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
-        const { payload } = await jwtVerify(token, secret);
-        userId = payload.id;
-      } catch (error) {
-        console.warn("Invalid or expired token");
-      }
+    
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    // Verify the token and get userId
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'reply');
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.id;
 
     // Get the request body
     const { contactId } = await req.json();
@@ -96,12 +94,15 @@ export async function POST(req) {
 
     if (contactId) {
       // Case 1: Initiate a call for a single contact
-      const contact = await prisma.contact.findUnique({
-        where: { id: contactId }, // No longer filtering by userId
+      const contact = await prisma.contact.findFirst({
+        where: { 
+          id: contactId,
+          userId: userId // Only allow calls to contacts owned by the user
+        },
       });
 
       if (!contact) {
-        return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+        return NextResponse.json({ error: "Contact not found or unauthorized" }, { status: 404 });
       }
 
       const result = await initiateCall(contact, callMetadataBase);
@@ -119,9 +120,11 @@ export async function POST(req) {
         retellCallId: result.retellCallId,
       });
     } else {
-      // Case 2: Initiate calls for all contacts (without requiring userId)
+      // Case 2: Initiate calls for all contacts of the user
       const contacts = await prisma.contact.findMany({
-         // Fetch all contacts if userId is null
+        where: {
+          userId: userId // Only get contacts for the authenticated user
+        }
       });
 
       if (contacts.length === 0) {

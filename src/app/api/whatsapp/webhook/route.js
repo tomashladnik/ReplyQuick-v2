@@ -8,28 +8,52 @@ export async function POST(req) {
     const formData = await req.formData();
     const messageSid = formData.get("MessageSid");
     const from = formData.get("From");
+    const to = formData.get("To"); // Get the 'to' number which is our WhatsApp number
     const body = formData.get("Body");
     const status = formData.get("MessageStatus");
 
-    // Remove 'whatsapp:' prefix from the phone number
-    const phoneNumber = from.replace("whatsapp:", "");
+    // Remove 'whatsapp:' prefix from the phone numbers
+    const fromNumber = from.replace("whatsapp:", "");
+    const toNumber = to.replace("whatsapp:", "");
 
-    // Find contact by phone number
-    const contact = await prisma.contact.findFirst({
+    // Find the user associated with the WhatsApp number
+    const user = await prisma.user.findFirst({
       where: {
-        phone: phoneNumber,
+        phone: toNumber // Assuming user's phone number matches the WhatsApp number
+      }
+    });
+
+    if (!user) {
+      console.log("No user found for WhatsApp number:", toNumber);
+      return NextResponse.json({ error: "No user found for this number" }, { status: 404 });
+    }
+
+    // Find contact by phone number under this user
+    let contact = await prisma.contact.findFirst({
+      where: {
+        phone: fromNumber,
+        userId: user.id
       },
     });
 
     if (!contact) {
-      console.log("Contact not found for phone number:", phoneNumber);
-      return NextResponse.json({ success: true }); // Still return success to Twilio
+      // Create new contact associated with the user
+      contact = await prisma.contact.create({
+        data: {
+          phone: fromNumber,
+          Name: `Unknown (${fromNumber})`,
+          userId: user.id,
+          source: "whatsapp_webhook",
+          status: "pending"
+        },
+      });
     }
 
-    // Create or get thread
+    // Find or create thread
     let thread = await prisma.thread.findFirst({
       where: {
         contactId: contact.id,
+        userId: user.id
       },
     });
 
@@ -37,7 +61,8 @@ export async function POST(req) {
       thread = await prisma.thread.create({
         data: {
           contactId: contact.id,
-          userId: contact.userId || "system",
+          userId: user.id,
+          label: "WhatsApp",
         },
       });
     }
@@ -49,7 +74,7 @@ export async function POST(req) {
         content: body,
         channel: "whatsapp",
         direction: "inbound",
-        status: status,
+        status: status || "received",
         metadata: {
           messageId: messageSid,
           twilioStatus: status,

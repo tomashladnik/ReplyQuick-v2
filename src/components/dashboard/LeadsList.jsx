@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { LeadDetailsSidebar } from './LeadDetailsSidebar';
 
 export function LeadsList() {
   const [leads, setLeads] = useState([]);
@@ -7,13 +8,29 @@ export function LeadsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [timeFilter, setTimeFilter] = useState('30');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [showInboundOnly, setShowInboundOnly] = useState(false);
 
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         const response = await fetch('/api/contacts/getContact');
         const data = await response.json();
-        setLeads(data);
+        
+        // Sort leads to show recent inbound callers first
+        const sortedLeads = data.sort((a, b) => {
+          // If both are inbound callers, sort by most recent call
+          if (a.source === 'inbound_call' && b.source === 'inbound_call') {
+            return new Date(b.lastContact) - new Date(a.lastContact);
+          }
+          // Put inbound callers first
+          if (a.source === 'inbound_call') return -1;
+          if (b.source === 'inbound_call') return 1;
+          // Sort rest by last contact date
+          return new Date(b.lastContact) - new Date(a.lastContact);
+        });
+        
+        setLeads(sortedLeads);
       } catch (error) {
         console.error('Error fetching leads:', error);
       } finally {
@@ -40,10 +57,11 @@ export function LeadsList() {
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.Name.toLowerCase().includes(searchTerm?.toLowerCase()) ||
-                         lead.email.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+                         lead.email?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
                          lead.phone.includes(searchTerm);
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesInbound = !showInboundOnly || lead.source === 'inbound_call';
+    return matchesSearch && matchesStatus && matchesInbound;
   });
 
   if (loading) {
@@ -59,7 +77,21 @@ export function LeadsList() {
   return (
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h2 className="text-base sm:text-lg font-semibold">Your Leads</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-base sm:text-lg font-semibold">Your Leads</h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="showInbound"
+              checked={showInboundOnly}
+              onChange={(e) => setShowInboundOnly(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <label htmlFor="showInbound" className="text-sm text-gray-600">
+              Show inbound callers only
+            </label>
+          </div>
+        </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <input 
             type="search" 
@@ -103,17 +135,21 @@ export function LeadsList() {
           {filteredLeads.map((lead) => (
             <div 
               key={lead.id} 
-              className={`${statusColors[lead.status]} p-3 sm:p-4 rounded-lg relative border hover:shadow-md transition-shadow`}
+              className={`${
+                lead.source === 'inbound_call' 
+                  ? 'bg-blue-50 border-blue-200 shadow-md' 
+                  : statusColors[lead.status]
+              } p-3 sm:p-4 rounded-lg relative border hover:shadow-md transition-shadow cursor-pointer`}
+              onClick={() => setSelectedLeadId(lead.id)}
             >
-              <button 
-                className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center hover:bg-gray-50"
-                onClick={() => {
-                  // Add quick action menu here
-                  console.log('Quick action for:', lead.fullName);
-                }}
-              >
-                +
-              </button>
+              {lead.source === 'inbound_call' && (
+                <div className="absolute top-2 right-2">
+                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                    Inbound Caller
+                  </span>
+                </div>
+              )}
+              
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-200 overflow-hidden">
                   {lead.avatarUrl ? (
@@ -136,15 +172,18 @@ export function LeadsList() {
                   <p className="text-xs sm:text-sm text-gray-500">{lead.company || 'No company'}</p>
                 </div>
               </div>
+              
               <div className="text-xs sm:text-sm text-gray-600 ml-[52px] sm:ml-[60px]">
                 <div className="flex items-center gap-2">
                   <span>📞</span>
                   <span>{lead.phone}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span>✉️</span>
-                  <span className="truncate">{lead.email}</span>
-                </div>
+                {lead.email && (
+                  <div className="flex items-center gap-2">
+                    <span>✉️</span>
+                    <span className="truncate">{lead.email}</span>
+                  </div>
+                )}
                 {lead.lastContact && (
                   <div className="flex items-center gap-2 mt-1">
                     <span>🕒</span>
@@ -156,6 +195,12 @@ export function LeadsList() {
           ))}
         </div>
       )}
+
+      <LeadDetailsSidebar
+        isOpen={!!selectedLeadId}
+        onClose={() => setSelectedLeadId(null)}
+        leadId={selectedLeadId}
+      />
     </div>
   );
 }

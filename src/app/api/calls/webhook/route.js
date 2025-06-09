@@ -1,112 +1,180 @@
 import { PrismaClient } from "@prisma/client";
-import axios from "axios";
+import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-const sendToN8n = async (event, callData) => {
-  try {
-    await axios.post(
-      'https://n8n-1-h79c.onrender.com/webhook/schedule-call', // Replace with your actual webhook path
-      {
-        event,
-        call: callData
-      }
-      // If you set up Basic Auth, add:
-      // ,{ auth: { username: process.env.N8N_USERNAME, password: process.env.N8N_PASSWORD } }
-    );
-  } catch (error) {
-    console.error("Failed to send to n8n:", error);
-  }
-};
+// Helper function to log webhook events
+function logWebhookEvent(event, data, error = null) {
+  const timestamp = new Date().toISOString();
+  const logData = {
+    timestamp,
+    event,
+    sessionId: data?.session_id,
+    status: error ? 'error' : 'success',
+    data: data,
+    error: error?.message
+  };
+  
+  console.log('📞 Webhook Event Log:', JSON.stringify(logData, null, 2));
+}
 
 export async function POST(req) {
   try {
-    console.log("Webhook received");
-    const { event, call } = await req.json();
-    if (!event || !call || !call.call_id) {
-      console.error("Invalid webhook payload:", { event, call });
-      return new Response(JSON.stringify({ error: "Invalid payload" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
+    const webhookData = await req.json();
+    logWebhookEvent('received', webhookData);
+
+    const {
+      session_id,
+      event_type,
+      caller_number,
+      timestamp,
+      duration,
+      channel_type = "phone_call",
+      cost,
+      session_status,
+      user_sentiment,
+      end_status,
+      transcript,
+      summary,
+      recording_url,
+      public_log_url
+    } = webhookData;
+
+    // Handle new inbound call
+    if (event_type === "call_initiated" && caller_number) {
+      logWebhookEvent('inbound_call_processing', { caller_number, session_id });
+      
+      // Try to find existing contact by phone number
+      let contact = await prisma.contact.findFirst({
+        where: {
+          phone: caller_number
+        }
+      });
+
+      // If contact doesn't exist, create a new one
+      if (!contact) {
+        contact = await prisma.contact.create({
+          data: {
+            Name: `Unknown Caller (${caller_number})`,
+            phone: caller_number,
+            source: "inbound_call",
+            status: "new"
+          }
+        });
+        logWebhookEvent('new_contact_created', { contactId: contact.id, phone: caller_number });
+      } else {
+        logWebhookEvent('existing_contact_found', { contactId: contact.id, phone: caller_number });
+      }
+
+      // Create a new call record
+      const call = await prisma.call.create({
+        data: {
+          sessionId: session_id,
+          contactId: contact.id,
+          userId: contact.userId || null,
+          direction: "inbound",
+          channelType: channel_type,
+          startTime: new Date(timestamp),
+          status: "in-progress"
+        }
+      });
+
+      logWebhookEvent('call_record_created', { callId: call.id, sessionId: session_id });
+
+      return NextResponse.json({ 
+        success: true, 
+        event: "call_initiated",
+        contact,
+        call
       });
     }
 
-    console.log(`Webhook event received: ${event}`, JSON.stringify(call, null, 2));
-
-    if (
-      (
-        call.call_analysis &&
-        call.call_analysis.user_sentiment === 'Positive')
-    ) {
-      await sendToN8n(event, call);
-    }
-
-    switch (event) {
-      case "call_started":
-        if (!call.start_timestamp) {
-          console.warn("Missing start_timestamp in call_started event");
-          break;
-        }
-        await prisma.call.update({
-          where: { callSid: call.call_id },
-          data: { status: "started", startTime: new Date(call.start_timestamp) },
-        });
-        break;
-
-      case "call_ended":
-        if (!call.start_timestamp || !call.end_timestamp) {
-          console.warn("Missing timestamps in call_ended event");
-          break;
-        }
-        const duration = (call.end_timestamp - call.start_timestamp) / 1000; // Duration in seconds
-        await prisma.call.update({
-          where: { callSid: call.call_id },
-          data: {
-            status: "completed",
-            endTime: new Date(call.end_timestamp),
-            duration,
-            transcriptText: call.transcript || "No transcript available",
-            recordingUrl: call.recording_url || null,
-            publicLogUrl: call.public_log_url || null,
-            disconnectionReason: call.disconnection_reason || null,
-            cost: call.call_cost?.combined_cost || null,
-          },
-        });
-        break;
-
-      case "call_analyzed":
-        if (!call.call_analysis) {
-          console.warn("Missing call_analysis in call_analyzed event");
-          break;
-        }
-        await prisma.call.update({
-          where: { callSid: call.call_id },
-          data: {
-            summary: call.call_analysis.call_summary || "No summary available",
-            qualification: call.call_analysis.user_sentiment || "Unknown",
-            userSentiment: call.call_analysis.user_sentiment || "Unknown", // Save user sentiment
-          },
-        });
-        break;
-
-      default:
-        console.log("Unhandled event:", event);
-    }
-
-    // Return a 204 response with no body
-    return new Response(null, { status: 204 });
-  } catch (error) {
-    console.error("Webhook error:", error.message, error.stack);
-    return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+    // Handle call updates (in-progress, completed, etc.)
+    logWebhookEvent('call_update_processing', { 
+      session_id, 
+      event_type,
+      status: session_status 
     });
+
+    const call = await prisma.call.findFirst({
+      where: {
+        sessionId: session_id
+      }
+    });
+
+    if (!call) {
+      const error = new Error(`Call not found for session: ${session_id}`);
+      logWebhookEvent('call_not_found', { session_id }, error);
+      return NextResponse.json(
+        { error: "Call not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update call with latest information
+    const updatedCall = await prisma.call.update({
+      where: {
+        id: call.id
+      },
+      data: {
+        status: session_status || call.status,
+        duration: duration ? Math.floor(duration) : call.duration,
+        cost: cost ? parseFloat(cost) : call.cost,
+        userSentiment: user_sentiment || call.userSentiment,
+        disconnectionReason: end_status || call.disconnectionReason,
+        transcriptText: transcript || call.transcriptText,
+        summary: summary || call.summary,
+        recordingUrl: recording_url || call.recordingUrl,
+        publicLogUrl: public_log_url || call.publicLogUrl,
+        channelType: channel_type || call.channelType,
+        endedAt: session_status === "completed" ? new Date(timestamp) : call.endedAt,
+        updatedAt: new Date()
+      }
+    });
+
+    logWebhookEvent('call_updated', { 
+      callId: updatedCall.id, 
+      sessionId: session_id,
+      status: updatedCall.status 
+    });
+
+    // If call completed, update contact's last contact date
+    if (session_status === "completed") {
+      await prisma.contact.update({
+        where: {
+          id: call.contactId
+        },
+        data: {
+          lastContact: new Date(timestamp)
+        }
+      });
+      logWebhookEvent('contact_updated', { 
+        contactId: call.contactId,
+        lastContact: timestamp 
+      });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      event: event_type,
+      call: updatedCall 
+    });
+
+  } catch (error) {
+    logWebhookEvent('error', { error: error.message }, error);
+    console.error("Webhook processing error:", error);
+    return NextResponse.json(
+      { error: "Failed to process webhook" },
+      { status: 500 }
+    );
   }
 }
 
+// Test endpoint to verify webhook is active
 export async function GET() {
-  return new Response(JSON.stringify({ status: "Webhook endpoint active" }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
+  return NextResponse.json({ 
+    status: "Webhook endpoint active",
+    timestamp: new Date().toISOString(),
+    message: "Ready to receive Retell.ai webhooks"
   });
 }
