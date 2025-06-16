@@ -27,7 +27,7 @@ export async function GET(req, { params }) {
         userId: userId // Ensure user can only access their own calls
       },
       include: {
-        contact: {
+        contacts: {
           select: {
             Name: true,
             phone: true,
@@ -45,10 +45,10 @@ export async function GET(req, { params }) {
     // Format the response
     const formattedCall = {
       id: call.id,
-      contactName: call.contact.Name,
-      phoneNumber: call.contact.phone,
-      email: call.contact.email,
-      category: call.contact.category,
+      contactName: call.contacts.Name,
+      phoneNumber: call.contacts.phone,
+      email: call.contacts.email,
+      category: call.contacts.category,
       date: call.startTime.toISOString(),
       duration: call.duration ? `${Math.floor(call.duration / 60)}:${(call.duration % 60).toString().padStart(2, '0')}` : null,
       status: call.status,

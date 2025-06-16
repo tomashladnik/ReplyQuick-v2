@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axios from "axios";
-import { BarChart2, Clock, Phone, TrendingUp } from "lucide-react";
+import { Clock, Phone, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import ContactList from "./contactList";
@@ -87,7 +87,6 @@ function useIsMobile() {
 }
 
 export default function AICallsPage() {
-  const [selectedCall, setSelectedCall] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState(null);

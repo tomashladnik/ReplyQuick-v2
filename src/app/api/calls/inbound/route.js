@@ -81,7 +81,7 @@ export async function GET() {
         direction: "inbound"
       },
       include: {
-        contact: true
+        contacts: true
       },
       orderBy: {
         startTime: 'desc'
@@ -92,8 +92,8 @@ export async function GET() {
     const formattedCalls = inboundCalls.map(call => ({
       id: call.id,
       sessionId: call.sessionId,
-      contactName: call.contact?.Name || 'Unknown Caller',
-      phoneNumber: call.contact?.phone || 'No Phone',
+      contactName: call.contacts?.Name || 'Unknown Caller',
+      phoneNumber: call.contacts?.phone || 'No Phone',
       startTime: call.startTime,
       duration: call.duration,
       status: call.status,
@@ -103,7 +103,7 @@ export async function GET() {
       recordingUrl: call.recordingUrl,
       publicLogUrl: call.publicLogUrl,
       qualification: call.qualification,
-      isNewContact: call.contact?.source === "inbound_call" && call.contact?.status === "new"
+      isNewContact: call.contacts?.source === "inbound_call" && call.contacts?.status === "new"
     }));
 
     return NextResponse.json({ calls: formattedCalls });
