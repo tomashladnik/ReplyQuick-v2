@@ -144,7 +144,15 @@
   .calls-table th:nth-child(6),
   .calls-table td:nth-child(4),
   .calls-table td:nth-child(5),
-  .calls-table td:nth-child(6) {
+  .calls-table td:nth-child(6),
+  .leads-table th:nth-child(3),
+  .leads-table th:nth-child(5),
+  .leads-table th:nth-child(6),
+  .leads-table th:nth-child(7),
+  .leads-table td:nth-child(3),
+  .leads-table td:nth-child(5),
+  .leads-table td:nth-child(6),
+  .leads-table td:nth-child(7) {
     display: none !important;
   }
   /* Card padding */
