@@ -4,12 +4,13 @@ export async function POST() {
   const {
     HUBSPOT_CLIENT_ID,
     HUBSPOT_SCOPE,
-    HUBSPOT_REDIRECT_URI,
-    HUBSPOT_REDIRECT_COMPLEMENT,
+    STANDARD_PAGE,
   } = process.env;
 
+  const HUBSPOT_REDIRECT_COMPLEMENT = '/api/hubspot/callback&scope=crm.schemas.deals.read%20oauth%20crm.objects.companies.read%20crm.objects.deals.read%20crm.schemas.contacts.read%20crm.objects.contacts.read%20crm.schemas.companies.read';
+
   try {
-    const authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${HUBSPOT_CLIENT_ID}&scope=${HUBSPOT_SCOPE}&redirect_uri=${HUBSPOT_REDIRECT_URI}${HUBSPOT_REDIRECT_COMPLEMENT}$disable_hs_ui=true&show_verification_modal=false`;
+    const authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${HUBSPOT_CLIENT_ID}&scope=${HUBSPOT_SCOPE}&redirect_uri=${STANDARD_PAGE}${HUBSPOT_REDIRECT_COMPLEMENT}$disable_hs_ui=true&show_verification_modal=false`;
 
     return NextResponse.json(
       { authUrl },

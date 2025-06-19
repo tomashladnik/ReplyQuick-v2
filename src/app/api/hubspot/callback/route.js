@@ -11,7 +11,7 @@ export async function GET(request) {
         grant_type: 'authorization_code',
         client_id: process.env.HUBSPOT_CLIENT_ID,
         client_secret: process.env.HUBSPOT_CLIENT_SECRET,
-        redirect_uri: process.env.HUBSPOT_REDIRECT_URI,
+        redirect_uri: `${process.env.STANDARD_PAGE}/api/hubspot/callback`,
         code,
       },
       headers: {
@@ -20,7 +20,7 @@ export async function GET(request) {
     });
 
     return NextResponse.redirect(
-      'http://localhost:3000/settings?' +
+      `${process.env.STANDARD_PAGE}/settings?` +
       `access_token=${tokenResponse.data.access_token}` +
       `&refresh_token=${tokenResponse.data.refresh_token}` +
       `&expires_in=${tokenResponse.data.expires_in}`
