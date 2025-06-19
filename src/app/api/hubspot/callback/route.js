@@ -2,6 +2,8 @@ import axios from 'axios';
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
+  console.log('CALLBACK')
+  console.log('request')
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   
@@ -18,6 +20,9 @@ export async function GET(request) {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
+
+    console.log('tokenResponse', tokenResponse);
+    console.log('tokenResponse.data', tokenResponse.data);
 
     return NextResponse.redirect(
       'http://localhost:3000/settings?' +
