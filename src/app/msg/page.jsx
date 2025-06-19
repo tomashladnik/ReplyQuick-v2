@@ -446,7 +446,12 @@ export default function ChatPage() {
                         ? "bg-primary/10 hover:bg-primary/15 shadow-inner"
                         : "hover:bg-muted/80 bg-muted/40"
                     }`}
-                    onClick={() => setSelectedContact(contact)}
+                    onClick={() => {
+                      setWhatsappMessages([]);
+                      setSmsMessages([]);
+                      setEmailMessages([]);
+                      setSelectedContact(contact);
+                    }}
                   >
                     <Avatar className="h-10 w-10 mr-3 ring-2 ring-background shadow-sm">
                       <AvatarImage src={contact.avatar} />
