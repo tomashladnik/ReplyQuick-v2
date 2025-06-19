@@ -3,62 +3,78 @@
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import axios from 'axios';
 
 function SettingsContent() {
   const [hubSpotConnected, setHubSpotConnected] = useState(false);
-  const [pipedriveConnected, setPipedriveConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState({
+    id: '',
+    name: '',
+    email: '',
+    phone: ''
+  });
   const searchParams = useSearchParams();
 
   useEffect(() => {
     fetchCrmStatus();
-  }, []);
-
-  useEffect(() => {
-    if (searchParams.get("token")) {
-      fetchCrmStatus();
-    }
+    fetchUser();
   }, [searchParams]);
 
   const fetchCrmStatus = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/crm/status");
-      if (!response.ok) throw new Error("Failed to fetch CRM status");
+    setLoading(true);
+    const accessTokenParam = searchParams.get("access_token");
+    const accessTokenStorage = localStorage.getItem("hubspot_access_token");
+    const refreshTokenParam = searchParams.get("refresh_token");
+    const refreshTokenStorage = localStorage.getItem("hubspot_refresh_token");
 
+    if (accessTokenParam && refreshTokenParam) {
+      setHubSpotConnected(true);
+      localStorage.setItem("hubspot_access_token", accessTokenParam);
+      localStorage.setItem("hubspot_refresh_token", refreshTokenParam);
+    } else if (accessTokenStorage && refreshTokenStorage) {
+      setHubSpotConnected(true);
+    } else {
+      setHubSpotConnected(false);
+    }
+    setLoading(false);
+  };
+
+  const fetchUser = async () => {
+    try {
+      const response = await fetch('/api/auth/user');
       const data = await response.json();
-      setHubSpotConnected(data?.hubSpotConnected || false);
-      setPipedriveConnected(data?.pipedriveConnected || false);
+
+      if (data.user) {
+        setUser(data.user);
+      }
     } catch (error) {
-      console.error("Error checking CRM status:", error);
+      console.error('Error fetching user:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const connectCRM = async (crm) => {
+  const connectHubspot = async () => {
     try {
-      const authUrl = `/api/crm/connect?platform=${crm}`;
-      window.location.href = authUrl;
+    const response = await axios.post('/api/hubspot/auth');
+    const { authUrl } = await response.data;
+
+    window.location.href = authUrl;
     } catch (error) {
-      console.error(`Error connecting to ${crm}:`, error);
+      console.error(`Error connecting to Hubspot:`, error);
     }
   };
 
-  const disconnectCRM = async (crm) => {
+  const disconnectHubspot = async () => {
     try {
-      const response = await fetch("/api/crm/disconnect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform: crm }),
-      });
-
-      if (response.ok) {
-        if (crm === "hubspot") setHubSpotConnected(false);
-        if (crm === "pipedrive") setPipedriveConnected(false);
-      }
+      setLoading(true);
+      localStorage.removeItem('hubspot_access_token');
+      localStorage.removeItem('hubspot_refresh_token');
+      setHubSpotConnected(false);
+      window.location.href =  '/settings';
     } catch (error) {
-      console.error(`Error disconnecting ${crm}:`, error);
+      console.error(`Error disconnecting Hubspot:`, error);
     }
   };
 
@@ -73,6 +89,22 @@ function SettingsContent() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <main className="flex-1 p-8">
+        <div className="p-6 bg-white rounded-lg shadow-md w-full max-w-2xl mx-auto mb-8">
+          <h2 className="text-2xl font-semibold mb-6">Profile info</h2>
+          <div className="mb-6 p-4 border rounded-lg">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                <span className="text-2xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium">{user.name}</h3>
+                <p className="text-sm text-gray-500">{user.email}</p>
+                <p className="text-sm text-gray-500">{user.phone}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="p-6 bg-white rounded-lg shadow-md w-full max-w-2xl mx-auto">
           <h2 className="text-2xl font-semibold mb-6">CRM Integration Settings</h2>
 
@@ -88,14 +120,14 @@ function SettingsContent() {
               {hubSpotConnected ? (
                 <Button
                   variant="destructive"
-                  onClick={() => disconnectCRM("hubspot")}
+                  onClick={() => disconnectHubspot()}
                 >
                   Disconnect
                 </Button>
               ) : (
                 <Button
                   variant="default"
-                  onClick={() => connectCRM("hubspot")}
+                  onClick={() => connectHubspot()}
                 >
                   Connect
                 </Button>
@@ -104,7 +136,7 @@ function SettingsContent() {
           </div>
 
           {/* Pipedrive Integration */}
-          <div className="p-4 border rounded-lg">
+          {/* <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-medium">Pipedrive</h3>
@@ -115,20 +147,20 @@ function SettingsContent() {
               {pipedriveConnected ? (
                 <Button
                   variant="destructive"
-                  onClick={() => disconnectCRM("pipedrive")}
+                  onClick={() => console.log('Disconnect Pipedrive')}
                 >
                   Disconnect
                 </Button>
               ) : (
                 <Button
                   variant="default"
-                  onClick={() => connectCRM("pipedrive")}
+                  onClick={() => console.log('Connect Pipedrive')}
                 >
                   Connect
                 </Button>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </main>
     </div>

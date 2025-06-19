@@ -2,7 +2,19 @@
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { BarChart2, Calendar, HelpCircle, Home, LogOut, MessageSquare, Phone, Settings, Users, X } from "lucide-react"
+import {
+  BarChart2,
+  Calendar,
+  HelpCircle,
+  Home,
+  LogOut,
+  MessageSquare,
+  Phone,
+  Settings,
+  Users,
+  X,
+  Building2
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -16,7 +28,8 @@ export function Sidebar({ isOpen, onClose }) {
     { name: "Appointments", href: "/appointments", icon: Calendar },
     { name: "Analytics", href: "/", icon: BarChart2 },
     { name: "Messages", href: "/msg", icon: MessageSquare },
-    { name: "Settings", href: "/", icon: Settings },
+    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "CRM", href: "/crm", icon: Building2 },
   ]
 
   return (

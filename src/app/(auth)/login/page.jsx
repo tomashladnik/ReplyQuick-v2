@@ -3,10 +3,9 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Eye, EyeOff } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
 
 export default function LoginPage() {
@@ -17,6 +16,11 @@ export default function LoginPage() {
     emailOrPhone: "",
     password: "",
   })
+
+  useEffect(() => {
+    localStorage.removeItem('hubspot_access_token');
+    localStorage.removeItem('hubspot_refresh_token');
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault()
