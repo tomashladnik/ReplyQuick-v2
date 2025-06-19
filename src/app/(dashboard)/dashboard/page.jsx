@@ -56,9 +56,7 @@ export default function DashboardPage() {
         from_number: ["+19412717374"]
       }),
     });
-    console.log('--- RES', res);
     const data = await res.json();
-    console.log('--- DATA', data);
     setCallLogs(Array.isArray(data) ? data : data.calls || []);
     setLogsLoading(false);
   };
