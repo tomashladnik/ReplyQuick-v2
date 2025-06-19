@@ -2,8 +2,6 @@ import axios from 'axios';
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
-  console.log('CALLBACK')
-  console.log('request')
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   
@@ -13,16 +11,13 @@ export async function GET(request) {
         grant_type: 'authorization_code',
         client_id: process.env.HUBSPOT_CLIENT_ID,
         client_secret: process.env.HUBSPOT_CLIENT_SECRET,
-        redirect_uri: 'http://localhost:3000/api/hubspot/callback',
+        redirect_uri: process.env.HUBSPOT_REDIRECT_URI,
         code,
       },
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
-
-    console.log('tokenResponse', tokenResponse);
-    console.log('tokenResponse.data', tokenResponse.data);
 
     return NextResponse.redirect(
       'http://localhost:3000/settings?' +
