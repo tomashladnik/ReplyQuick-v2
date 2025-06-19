@@ -23,7 +23,7 @@ export async function GET(req) {
   try {
     // Get the token from cookies
     const token = req.cookies.get("auth_token")?.value;
-    
+
     if (!token) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
@@ -77,7 +77,7 @@ export async function GET(req) {
       },
       take: 5,
       include: {
-        contact: {
+        contacts: {
           select: {
             Name: true,
             phone: true
@@ -90,8 +90,8 @@ export async function GET(req) {
     const formattedRecentCalls = recentCalls.map(call => ({
       id: call.id,
       sessionId: call.sessionId,
-      contactName: call.contact?.Name || 'Unknown',
-      contactPhone: call.contact?.phone || 'No Phone',
+      contactName: call.contacts?.Name || 'Unknown',
+      contactPhone: call.contacts?.phone || 'No Phone',
       status: call.status,
       startTime: call.startTime,
       duration: call.duration,

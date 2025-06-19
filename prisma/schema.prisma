@@ -1,4 +1,4 @@
-generator client {More actions
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -9,67 +9,36 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   fullName  String
-  email     String   @unique
+  email     String    @unique
   phone     String
-  status    String   @default("new") // new, contacted, interested, closed
-  avatarUrl String?  @map("avatar_url")
+  status    String    @default("new")
+  avatarUrl String?   @map("avatar_url")
   password  String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  
-  contacts Contact[]
-  calls Call[]
-  threads Thread[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  Call      Call[]
+  contacts  Contact[]
+  threads   Thread[]
 
   @@map("users")
 }
 
-model Call {
-  id                 String    @id @default(uuid())
-  userId             String?   // Optional now
-  contactId          String
-  direction          String    // "inbound" or "outbound"
-  status            String    // "scheduled", "in-progress", "completed", "failed"
-  sentAt            DateTime? // Add this for when the call was sent/queued
-  startTime         DateTime
-  endTime           DateTime?
-  duration          Int?      // in seconds
-  recordingUrl      String?
-  publicLogUrl      String?   // Add for public log URL
-  disconnectionReason String? // Add for disconnection reason
-  cost             Float?    // Add for call cost
-  transcriptText   String?   
-  summary          String?   
-  qualification    String?   // "qualified", "not_qualified"
-  userSentiment    String?   // "Positive", "Negative", "Neutral", "Unknown"
-  callSid          String?   @unique
-
-  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull) // Make user optional
-  contact Contact @relation(fields: [contactId], references: [id])
-
-  @@index([userId])
-  @@index([contactId])
-  @@map("calls")
-}
-
 model Contact {
   id        String   @id @default(uuid())
-  userId    String?  // Optional now
-  fullName  String
-  Name  String
+  userId    String?
+  Name      String
   email     String?  @unique
   phone     String
   category  String?
-  source    String   // "csv_import", "manual"
-  status    String   @default("pending") // "pending", "contacted", "completed"
+  source    String
+  status    String   @default("pending")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user    User?    @relation(fields: [userId], references: [id])
-  calls   Call[]
-  threads Thread[]
+  Call      Call[]
+  user      User?    @relation(fields: [userId], references: [id])
+  threads   Thread[]
 
   @@index([userId])
   @@map("contacts")
@@ -81,11 +50,10 @@ model Thread {
   userId    String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  label     String?   // For auto-labeling (e.g., "Support", "Follow-up")
-  
+  label     String?
+  messages  Message[]
   contact   Contact   @relation(fields: [contactId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
-  messages  Message[]
 
   @@index([contactId])
   @@index([userId])
@@ -96,15 +64,44 @@ model Message {
   id        String   @id @default(uuid())
   threadId  String
   content   String
-  channel   String   // "email", "sms", "whatsapp"
-  direction String   // "inbound" or "outbound"
-  status    String   // "sent", "delivered", "failed"
-  metadata  Json?    // For storing channel-specific data
+  channel   String
+  direction String
+  status    String
+  metadata  Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   thread    Thread   @relation(fields: [threadId], references: [id])
 
   @@index([threadId])
   @@map("messages")
+}
+
+model Call {
+  id                  String    @id
+  userId              String?
+  contactId           String
+  sessionId           String?
+  callSid             String?   @unique
+  startTime           DateTime  @default(now())
+  endedAt             DateTime?
+  duration            Int?
+  status              String    @default("pending")
+  direction           String    @default("outbound")
+  channelType         String?
+  cost                Float?
+  transcriptText      String?
+  summary             String?
+  userSentiment       String?
+  qualification       String?
+  recordingUrl        String?
+  publicLogUrl        String?
+  disconnectionReason String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime
+  contacts            Contact   @relation(fields: [contactId], references: [id])
+  users               User?     @relation(fields: [userId], references: [id])
+
+  @@index([contactId])
+  @@index([sessionId])
+  @@index([userId])
 }
