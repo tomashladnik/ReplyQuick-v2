@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from 'react';
 import { toast } from "react-hot-toast";
@@ -12,6 +13,7 @@ export default function AppointmentsPage() {
   const [error, setError] = useState(null);
   const [hubspotAccessToken, setHubspotAccessToken] = useState(null);
   const [leads, setLeads] = useState([]);
+  const [leadsToSend, setLeadsToSend] = useState([]);
   const [displayedLeads, setDisplayedLeads] = useState([]);
   const [deals, setDeals] = useState([]);
 
@@ -68,7 +70,7 @@ export default function AppointmentsPage() {
         id: contact.id,
         name: contact.Name || "",
         contactMethod: contact.email || contact.phone || "N/A",
-        source: "App",
+        source: "ReplyQuick",
         status: "New",
         lastActivity: "",
         assignedRep: "Unassigned",
@@ -83,12 +85,12 @@ export default function AppointmentsPage() {
 
   const fetchHubspotLeads = async () => {
     try {
-      const response = await axios.post("/api/hubspot/contacts", {
+      const response = await axios.post("/api/hubspot/get-contacts", {
         hubspotAccessToken,
       });
 
       if (!response.statusText || response.statusText !== "OK") {
-        throw new Error("Failed to fetch deals");
+        throw new Error("Failed to fetch leads");
       }
 
       const filteredContacts = response.data.results.filter((contact) => (
@@ -142,7 +144,40 @@ export default function AppointmentsPage() {
     });
 
     setDisplayedLeads(uniqueLeads);
-  }
+  };
+
+  const addLeadToSentList = (lead) => {
+    if (lead.source === "HubSpot") return;
+    setLeadsToSend((prevSentLeads) => {
+      if (prevSentLeads.includes(lead.id)) {
+        prevSentLeads = prevSentLeads.filter(id => id !== lead.id);
+      } else {
+        return [...prevSentLeads, lead.id];
+      }
+      return prevSentLeads;
+    });
+  };
+
+  const sendContactsToHubSpot = async () => {
+    const filteredLeads = leads.filter((lead) => leadsToSend.includes(lead.id));
+
+    const hubspotContacts = filteredLeads.map((lead) => ({
+      properties: {
+        firstname: lead.name || "",
+        email: lead.contactMethod.includes('@') && lead.contactMethod || "",
+        phone: lead.contactMethod.includes('+') && lead.contactMethod || "",
+      }
+    }));
+
+    const response = await axios.post("/api/hubspot/post-contacts", {
+      hubspotAccessToken,
+      hubspotContacts,
+    });
+
+    if (!response.statusText || response.statusText !== "OK") {
+      throw new Error("Failed to send contacts");
+    }
+  };
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-8">
@@ -196,7 +231,16 @@ export default function AppointmentsPage() {
                           </TableHeader>
                           <TableBody>
                             {displayedLeads.map((lead) => (
-                              <TableRow key={lead.id} onClick={() => console.log(lead)}>
+                              <TableRow
+                                key={lead.id}
+                                onClick={() => addLeadToSentList(lead)}
+                                className={
+                                  (leadsToSend.includes(lead.id)
+                                    ? "bg-blue-50 ring-2 ring-blue-400"
+                                    : "bg-white"
+                                  )
+                                }
+                              >
                                 <TableCell className="font-medium">{lead.name}</TableCell>
                                 <TableCell>{lead.contactMethod}</TableCell>
                                 <TableCell>{lead.source}</TableCell>
@@ -213,6 +257,19 @@ export default function AppointmentsPage() {
                 )}
               </CardContent>
             </Card>
+ 
+            {
+              leadsToSend.length > 0 && (
+                <Button
+                  disabled={false}
+                  variant="default"
+                  onClick={sendContactsToHubSpot}
+                  className="mx-auto mb-8"
+                >
+                  Upload these {leadsToSend.length} Contacts to HubSpot
+                </Button>
+              )
+            }
 
             <Card>
               <CardHeader>
