@@ -25,7 +25,7 @@ export default function ContactsPage() {
     }
 
     try {
-      const response = await axios.post("/api/hubspot/contacts", {
+      const response = await axios.post("/api/hubspot/get-contacts", {
         hubspotAccessToken,
       });
 

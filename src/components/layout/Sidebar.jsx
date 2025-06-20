@@ -26,7 +26,7 @@ export function Sidebar({ isOpen, onClose }) {
     { name: "AI Calls", href: "/calls", icon: Phone },
     { name: "Contacts", href: "/contacts", icon: Users },
     { name: "Appointments", href: "/appointments", icon: Calendar },
-    { name: "Analytics", href: "/", icon: BarChart2 },
+    // { name: "Analytics", href: "/", icon: BarChart2 },
     { name: "Messages", href: "/msg", icon: MessageSquare },
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "CRM", href: "/crm", icon: Building2 },
