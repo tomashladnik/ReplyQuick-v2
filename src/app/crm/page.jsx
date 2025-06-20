@@ -177,6 +177,8 @@ export default function AppointmentsPage() {
     if (!response.statusText || response.statusText !== "OK") {
       throw new Error("Failed to send contacts");
     }
+
+    toast.success("Contacts sent to HubSpot!")
   };
 
   return (
