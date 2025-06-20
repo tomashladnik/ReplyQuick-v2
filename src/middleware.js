@@ -2,7 +2,7 @@ import { jwtVerify } from 'jose'
 import { NextResponse } from 'next/server'
 
 // List of public routes that don't require authentication
-const publicRoutes = ['/login', '/signup', '/verify-otp', '/success', '/api/auth/login', '/api/auth/register', '/api/send-otp','/api/email/webhook','/api/calls/webhook','/api/sms/webhook','/api/whatsapp/webhook']
+const publicRoutes = ['/login', '/signup', '/verify-otp', '/success', '/api/auth/login', '/api/auth/register', '/api/send-otp','/api/email/webhook','/api/calls/webhook','/api/sms/webhook','/api/whatsapp/webhook', '/api/hubspot/callback']
 
 export async function middleware(request) {
   // Skip authentication in development mode
